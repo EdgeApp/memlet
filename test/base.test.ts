@@ -67,4 +67,15 @@ describe('memlet', async () => {
   it('can retrieve file in folder', async () => {
     expect(await memlet.getJSON('Folder-A/File-B')).deep.equals(fileB)
   })
+
+  it('memory usage is correct', async () => {
+    const store = memlet.getStore()
+
+    const sumOfFileSizes = Object.values(store.files).reduce(
+      (sum, file) => sum + file.size,
+      0
+    )
+
+    expect(store.memoryUsage).to.equal(sumOfFileSizes)
+  })
 })

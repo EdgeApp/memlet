@@ -43,6 +43,7 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
-    "disklet": "^0.4.5"
+    "disklet": "^0.4.5",
+    "utf8-length": "0.0.1"
   }
 }

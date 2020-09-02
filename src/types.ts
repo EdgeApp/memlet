@@ -5,10 +5,12 @@ export interface Memlet {
 
   getJSON: (path: string) => Promise<any>
   setJSON: (path: string, obj: any) => Promise<void>
+
+  getStore: () => MemletStore
 }
 
 export interface MemletStore {
-  // memoryUsage: number
+  memoryUsage: number
   // maxMemoryUseage: number
   files: FileMap
   // filesOrderedByDate: FileIndex
@@ -20,9 +22,9 @@ export interface FileMap {
 
 export interface File {
   filename: string
-  // size: number
+  size: number
   data: any
-  // lastTouchedTimestamp: number
+  lastTouchedTimestamp: number
 }
 
 // export type FileIndex = FileIndexEntry[]

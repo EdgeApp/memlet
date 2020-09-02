@@ -1,5 +1,6 @@
 import { Disklet } from 'disklet'
-import { Memlet, MemletStore, File, MemletListing } from './types'
+import { Memlet, MemletStore, File } from './types'
+import utf8Length from 'utf8-length'
 
 export * from './types'
 
@@ -7,18 +8,47 @@ export function makeMemlet(disklet: Disklet): Memlet {
   // Private properties
 
   const store: MemletStore = {
+    memoryUsage: 0,
     files: {}
   }
 
   // Private methods
 
-  const updateFile = (key: string, data: any) => {
-    const file: File = {
+  const updateStoreFile = (
+    key: string,
+    data: any,
+    dataString: string = JSON.stringify(data)
+  ) => {
+    const size = utf8Length(dataString)
+    const lastTouchedTimestamp = Date.now()
+
+    const extingFile = getStoreFile(key)
+
+    const newFile: File = {
+      size,
       filename: key,
-      data
+      data,
+      lastTouchedTimestamp
     }
 
-    store.files[key] = file
+    // Calculate the difference in memory useage if there is an existing file
+    const memoryUsageDiff = extingFile
+      ? newFile.size - extingFile.size
+      : newFile.size
+
+    // Update memoryUsage using add method
+    addToMemoryUsage(memoryUsageDiff)
+
+    // Update file in store
+    store.files[key] = newFile
+  }
+
+  const getStoreFile = (key: string): File | undefined => {
+    return store.files[key]
+  }
+
+  const addToMemoryUsage = (bytes: number) => {
+    store.memoryUsage += bytes
   }
 
   return {
@@ -48,11 +78,10 @@ export function makeMemlet(disklet: Disklet): Memlet {
         return file.data
       } else {
         // Retrieve file from disklet, cache it, then return
-        const data = await disklet
-          .getText(filename)
-          .then(dataString => JSON.parse(dataString))
+        const dataString = await disklet.getText(filename)
+        const data = JSON.parse(dataString)
 
-        updateFile(filename, data)
+        updateStoreFile(filename, data, dataString)
 
         return data
       }
@@ -67,7 +96,12 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
       await disklet.setText(filename, dataString)
 
-      updateFile(filename, data)
+      updateStoreFile(filename, data, dataString)
+    },
+
+    // Introspective methods
+    getStore: () => {
+      return store
     }
   }
 }
