@@ -1,0 +1,48 @@
+{
+  "name": "memlet",
+  "version": "0.0.1",
+  "description": "Memory caching library written on top of the Disklet",
+  "author": "Edge (Dba Airbitz, Inc.)",
+  "license": "MIT",
+  "files": [
+    "CHANGELOG.md",
+    "lib",
+    "package.json",
+    "README.md",
+    "src"
+  ],
+  "main": "lib/memlet.cjs.js",
+  "module": "lib/memlet.js",
+  "browser": "lib/memlet.web.js",
+  "types": "lib/src/index.d.ts",
+  "scripts": {
+    "precommit": "npm run prepare",
+    "prepare": "rimraf lib && rollup -c && tsc",
+    "test": "mocha -r sucrase/register test/**/*.test.ts",
+    "dev": "mocha -r sucrase/register test/**/*.test.ts --watch --watch-files [src/**/*, test/**/*]"
+  },
+  "hooks": {
+    "pre-commit": "npm test"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.11.4",
+    "@babel/plugin-transform-object-assign": "^7.10.4",
+    "@babel/preset-env": "^7.11.0",
+    "@babel/preset-typescript": "^7.10.4",
+    "@rollup/plugin-babel": "^5.2.0",
+    "@rollup/plugin-node-resolve": "^9.0.0",
+    "@types/chai": "^4.2.12",
+    "@types/mocha": "^8.0.3",
+    "chai": "^4.2.0",
+    "husky": "^4.2.5",
+    "mocha": "^8.1.2",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.26.5",
+    "rollup-plugin-filesize": "^9.0.2",
+    "sucrase": "^3.15.0",
+    "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "disklet": "^0.4.5"
+  }
+}

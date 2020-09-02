@@ -1,0 +1,18 @@
+{
+  "extends": [
+    "standard-kit/prettier",
+    "standard-kit/prettier/flow",
+    "standard-kit/prettier/typescript"
+  ],
+  "parserOptions": {
+    "project": "tsconfig.json"
+  },
+  "plugins": [
+    "simple-import-sort"
+  ],
+  "rules": {
+    "@typescript-eslint/promise-function-async": "off",
+    "no-var": "error",
+    "simple-import-sort/sort": "error"
+  }
+}
