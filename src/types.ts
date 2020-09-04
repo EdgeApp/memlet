@@ -29,9 +29,3 @@ export interface File {
   lastTouchedTimestamp: number
 }
 
-// export type FileIndex = FileIndexEntry[]
-
-// export interface FileIndexEntry {
-//   filename: string
-//   timestamp: number
-// }
