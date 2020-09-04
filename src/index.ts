@@ -13,12 +13,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
   // Private methods
 
-  const updateStoreFile = (
-    key: string,
-    data: any,
-    dataString: string = JSON.stringify(data)
-  ) => {
-    const size = dataString.length
+  const updateStoreFile = (key: string, data: any, size: number) => {
     const lastTouchedTimestamp = Date.now()
 
     const extingFile = getStoreFile(key)
@@ -80,7 +75,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
         const dataString = await disklet.getText(filename)
         const data = JSON.parse(dataString)
 
-        updateStoreFile(filename, data, dataString)
+        updateStoreFile(filename, data, dataString.length)
 
         return data
       }
@@ -95,7 +90,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
       await disklet.setText(filename, dataString)
 
-      updateStoreFile(filename, data, dataString)
+      updateStoreFile(filename, data, dataString.length)
     },
 
     // Introspective methods
