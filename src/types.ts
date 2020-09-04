@@ -1,5 +1,7 @@
+import { DiskletListing } from 'disklet'
+
 export interface Memlet {
-  list: (path?: string) => Promise<MemletListing>
+  list: (path?: string) => Promise<DiskletListing>
 
   delete: (path: string) => Promise<void>
 
@@ -33,7 +35,3 @@ export interface File {
 //   filename: string
 //   timestamp: number
 // }
-
-export interface MemletListing {
-  [path: string]: 'file' | 'folder'
-}
