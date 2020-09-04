@@ -13,9 +13,11 @@ export interface Memlet {
 
 export interface MemletStore {
   memoryUsage: number
-  // maxMemoryUseage: number
   files: FileMap
-  // filesOrderedByDate: FileIndex
+}
+
+export interface MemletConfig {
+  maxMemoryUsage: number
 }
 
 export interface FileMap {
