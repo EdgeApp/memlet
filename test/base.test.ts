@@ -69,7 +69,7 @@ describe('memlet', async () => {
   })
 
   it('memory usage is correct', async () => {
-    const store = memlet.getStore()
+    const store = memlet._getStore()
 
     const sumOfFileSizes = Object.values(store.files).reduce(
       (sum, file) => sum + file.size,

@@ -90,7 +90,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     },
 
     // Introspective methods
-    getStore: () => {
+    _getStore: () => {
       return store
     }
   }

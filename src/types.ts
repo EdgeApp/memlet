@@ -8,7 +8,7 @@ export interface Memlet {
   getJson: (path: string) => Promise<any>
   setJson: (path: string, obj: any) => Promise<void>
 
-  getStore: () => MemletStore
+  _getStore: () => MemletStore
 }
 
 export interface MemletStore {
