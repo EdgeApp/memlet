@@ -16,7 +16,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
   const updateStoreFile = (key: string, data: any, size: number) => {
     const lastTouchedTimestamp = Date.now()
 
-    const extingFile = getStoreFile(key)
+    const extingFile = store.files[key]
 
     const newFile: File = {
       size,
@@ -35,10 +35,6 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
     // Update file in store
     store.files[key] = newFile
-  }
-
-  const getStoreFile = (key: string): File | undefined => {
-    return store.files[key]
   }
 
   const addToMemoryUsage = (bytes: number) => {
