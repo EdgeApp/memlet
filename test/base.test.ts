@@ -9,9 +9,9 @@ export async function createObjects(memlet: Memlet) {
   const folderA = { content: 'folder content' }
   const fileB = { content: 'subfolder content' }
 
-  memlet.setJSON('File-A', fileA)
-  memlet.setJSON('Folder-A', folderA)
-  memlet.setJSON('Folder-A/File-B', fileB)
+  memlet.setJson('File-A', fileA)
+  memlet.setJson('Folder-A', folderA)
+  memlet.setJson('Folder-A/File-B', fileB)
 
   return { fileA, folderA, fileB }
 }
@@ -57,15 +57,15 @@ describe('memlet', async () => {
   })
 
   it('can retrieve file', async () => {
-    expect(await memlet.getJSON('File-A')).deep.equals(fileA)
+    expect(await memlet.getJson('File-A')).deep.equals(fileA)
   })
 
   it('can retrieve folder', async () => {
-    expect(await memlet.getJSON('Folder-A')).deep.equals(folderA)
+    expect(await memlet.getJson('Folder-A')).deep.equals(folderA)
   })
 
   it('can retrieve file in folder', async () => {
-    expect(await memlet.getJSON('Folder-A/File-B')).deep.equals(fileB)
+    expect(await memlet.getJson('Folder-A/File-B')).deep.equals(fileB)
   })
 
   it('memory usage is correct', async () => {

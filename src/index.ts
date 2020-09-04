@@ -69,7 +69,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     },
 
     // Get an object at given path
-    getJSON: async (filename: string) => {
+    getJson: async (filename: string) => {
       const file = store.files[filename]
 
       if (file) {
@@ -87,7 +87,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     },
 
     // Set an object at a given path
-    setJSON: async (filename: string, data: any) => {
+    setJson: async (filename: string, data: any) => {
       /**
        * Write-through policy: write to disklet first then put it in the cache.
        */
