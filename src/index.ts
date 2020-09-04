@@ -1,6 +1,5 @@
 import { Disklet } from 'disklet'
 import { Memlet, MemletStore, File } from './types'
-import utf8Length from 'utf8-length'
 
 export * from './types'
 
@@ -19,7 +18,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     data: any,
     dataString: string = JSON.stringify(data)
   ) => {
-    const size = utf8Length(dataString)
+    const size = dataString.length
     const lastTouchedTimestamp = Date.now()
 
     const extingFile = getStoreFile(key)
