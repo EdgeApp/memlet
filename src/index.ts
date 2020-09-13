@@ -70,6 +70,8 @@ export function makeMemlet(
       adjustMemoryUsage(-file.size)
       delete store.files[filename]
     }
+
+    return file
   }
 
   const adjustMemoryUsage = (bytes?: number) => {
@@ -95,7 +97,12 @@ export function makeMemlet(
        * (because disklet delete might succeed in delete, but fail on
        * something else).
        */
-      deleteStoreFile(path)
+      const file = deleteStoreFile(path)
+
+      if (file) {
+        fileQueue.remove(file)
+      }
+
       await disklet.delete(path)
     },
 
