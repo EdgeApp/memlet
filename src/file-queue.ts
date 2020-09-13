@@ -5,21 +5,16 @@ export function makeFileQueue() {
 
   return {
     queue: function (file: File) {
-      const fileEntry: FileQueueEntry = {
-        filename: file.filename,
-        timestamp: file.lastTouchedTimestamp
-      }
-
-      filesOrderedByDate.push(fileEntry)
+      filesOrderedByDate.push(file)
     },
     dequeue: function () {
       return filesOrderedByDate.shift()
     },
     requeue: function (file: File) {
       const index = binarySearch(filesOrderedByDate, fileEntry => {
-        return file.filename === fileEntry.filename
+        return file === fileEntry
           ? 0
-          : file.lastTouchedTimestamp - fileEntry.timestamp ||
+          : file.lastTouchedTimestamp - fileEntry.lastTouchedTimestamp ||
               // Fallback to lexigraphical comparison (if timestamps match)
               (file.filename > fileEntry.filename ? 1 : -1)
       })
@@ -53,9 +48,4 @@ function binarySearch<T>(ar: T[], compareFn: (el: T) => number) {
   return -m - 1
 }
 
-export type FileQueue = FileQueueEntry[]
-
-export interface FileQueueEntry {
-  filename: string
-  timestamp: number
-}
+export type FileQueue = File[]
