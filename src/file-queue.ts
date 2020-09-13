@@ -11,24 +11,30 @@ export function makeFileQueue() {
       return filesOrderedByDate.shift()
     },
     requeue: function (file: File) {
-      const index = binarySearch(filesOrderedByDate, fileEntry => {
-        return file === fileEntry
-          ? 0
-          : file.lastTouchedTimestamp - fileEntry.lastTouchedTimestamp ||
-              // Fallback to lexigraphical comparison (if timestamps match)
-              (file.filename > fileEntry.filename ? 1 : -1)
-      })
+      this.remove(file)
+      this.queue(file)
+    },
+    remove: function (file: File) {
+      const index = indexOfFileInQueue(filesOrderedByDate, file)
 
       if (index >= 0) {
         filesOrderedByDate.splice(index, 1)
       }
-
-      this.queue(file)
     },
     list: function () {
       return filesOrderedByDate
     }
   }
+}
+
+function indexOfFileInQueue(fileQueue: FileQueue, file: File) {
+  return binarySearch(fileQueue, fileInQueue => {
+    return file === fileInQueue
+      ? 0
+      : file.lastTouchedTimestamp - fileInQueue.lastTouchedTimestamp ||
+          // Fallback to lexigraphical comparison (if timestamps match)
+          (file.filename > fileInQueue.filename ? 1 : -1)
+  })
 }
 
 function binarySearch<T>(ar: T[], compareFn: (el: T) => number) {

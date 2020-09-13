@@ -64,4 +64,18 @@ describe('FileQueue', async () => {
 
     expect(filenames).deep.equals(['file-B', 'file-C', 'file-A'])
   })
+
+  it('can remove files', async () => {
+    const fileQueue = makeFileQueue()
+
+    fileQueue.queue(fileA)
+    fileQueue.queue(fileB)
+    fileQueue.queue(fileC)
+
+    fileQueue.remove(fileB)
+
+    const filenames = fileQueue.list().map(fileEntry => fileEntry.filename)
+
+    expect(filenames).deep.equals(['file-A', 'file-C'])
+  })
 })
