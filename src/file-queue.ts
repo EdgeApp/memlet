@@ -1,28 +1,46 @@
 import { File } from './types'
 
 export function makeFileQueue() {
-  const filesOrderedByDate: File[] = []
+  const fileQueue: File[] = []
 
   return {
+    /**
+     * Inserts a file to the end of the queue with guaranteed ordering.
+     * Files are ordered by lastTouchedTimestamp and then lexigraphical order
+     * on filename.
+     * @param file The file to insert into queue.
+     */
     queue: function (file: File) {
-      filesOrderedByDate.push(file)
+      let endFileIndex = fileQueue.length - 1
+      let endFile = fileQueue[endFileIndex]
+
+      while (
+        endFileIndex > 0 &&
+        file.lastTouchedTimestamp <= endFile.lastTouchedTimestamp &&
+        file.filename < endFile.filename
+      ) {
+        endFile = fileQueue[--endFileIndex]
+      }
+
+      fileQueue.splice(endFileIndex + 1, 0, file)
     },
     dequeue: function () {
-      return filesOrderedByDate.shift()
+      return fileQueue.shift()
     },
     requeue: function (file: File) {
       this.remove(file)
+      file.lastTouchedTimestamp = Date.now()
       this.queue(file)
     },
     remove: function (file: File) {
-      const index = indexOfFileInQueue(filesOrderedByDate, file)
+      const index = indexOfFileInQueue(fileQueue, file)
 
       if (index >= 0) {
-        filesOrderedByDate.splice(index, 1)
+        fileQueue.splice(index, 1)
       }
     },
     list: function () {
-      return filesOrderedByDate
+      return fileQueue
     }
   }
 }
@@ -45,7 +63,7 @@ function indexOfFileInQueue(fileQueue: File[], file: File) {
     const fileInQueue = fileQueue[index]
 
     // Direction to continue binary search. Zero is a match.
-    // -1 is to search lower and 1 is to search higher.
+    // Negative is to search lower and positive is to search higher.
     const direction =
       file === fileInQueue
         ? 0

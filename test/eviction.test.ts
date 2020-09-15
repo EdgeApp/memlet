@@ -3,6 +3,7 @@ import { makeMemoryDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
 import { makeMemlet, Memlet } from '../src/index'
+import { delay } from './utils'
 
 export async function createObjects(memlet: Memlet) {
   const fileA = { content: 'file content' }
@@ -45,6 +46,7 @@ describe('memlet with evictions', async () => {
     })
 
     await memlet.setJson('File-A', fileA)
+    await delay(10)
     await memlet.setJson('File-B', fileB)
 
     const store = memlet._getStore()

@@ -3,6 +3,7 @@ import { describe, it } from 'mocha'
 
 import { makeFileQueue } from '../src/file-queue'
 import { File } from '../src'
+import { delay } from './utils'
 
 describe('FileQueue', async () => {
   const fileA: File = {
@@ -15,13 +16,13 @@ describe('FileQueue', async () => {
     filename: 'file-B',
     data: 'content',
     size: 123,
-    lastTouchedTimestamp: Date.now() + 1000
+    lastTouchedTimestamp: Date.now() + 1
   }
   const fileC: File = {
     filename: 'file-C',
     data: 'content',
     size: 123,
-    lastTouchedTimestamp: Date.now() + 2000
+    lastTouchedTimestamp: Date.now() + 2
   }
 
   it('can queue files', async () => {
@@ -57,6 +58,8 @@ describe('FileQueue', async () => {
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
     fileQueue.queue(fileC)
+
+    await delay(10)
 
     fileQueue.requeue(fileA)
 
