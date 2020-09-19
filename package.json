@@ -19,7 +19,7 @@
     "precommit": "npm run prepare",
     "prepare": "rimraf lib && rollup -c && tsc",
     "test": "mocha -r sucrase/register test/**/*.test.ts",
-    "dev": "mocha -r sucrase/register test/**/*.test.ts --watch --watch-files [src/**/*, test/**/*]"
+    "dev": "mocha -r sucrase/register test/**/*.test.ts --watch --watch-files 'src/**/*, test/**/*'"
   },
   "hooks": {
     "pre-commit": "npm test"

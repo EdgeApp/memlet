@@ -13,9 +13,11 @@ export interface Memlet {
 
 export interface MemletStore {
   memoryUsage: number
-  // maxMemoryUseage: number
   files: FileMap
-  // filesOrderedByDate: FileIndex
+}
+
+export interface MemletConfig {
+  maxMemoryUsage: number
 }
 
 export interface FileMap {
@@ -29,9 +31,3 @@ export interface File {
   lastTouchedTimestamp: number
 }
 
-// export type FileIndex = FileIndexEntry[]
-
-// export interface FileIndexEntry {
-//   filename: string
-//   timestamp: number
-// }

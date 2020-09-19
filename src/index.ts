@@ -1,15 +1,28 @@
 import { Disklet } from 'disklet'
-import { Memlet, MemletStore, File } from './types'
+
+import { Memlet, MemletStore, File, MemletConfig } from './types'
+import { makeFileQueue } from './file-queue'
 
 export * from './types'
 
-export function makeMemlet(disklet: Disklet): Memlet {
+const defaultConfig: MemletConfig = {
+  maxMemoryUsage: 0
+}
+
+export function makeMemlet(
+  disklet: Disklet,
+  configOptions: Partial<MemletConfig> = {}
+): Memlet {
   // Private properties
+
+  const config = { ...defaultConfig, ...configOptions }
 
   const store: MemletStore = {
     memoryUsage: 0,
     files: {}
   }
+
+  const fileQueue = makeFileQueue()
 
   // Private methods
 
@@ -25,43 +38,83 @@ export function makeMemlet(disklet: Disklet): Memlet {
       lastTouchedTimestamp
     }
 
-    // Calculate the difference in memory useage if there is an existing file
+    if (extingFile) {
+      // Update file's position in the file queue
+      fileQueue.requeue(newFile)
+    } else {
+      // Add file to the file queue
+      fileQueue.queue(newFile)
+    }
+
+    // Calculate the difference in memory usage if there is an existing file
     const memoryUsageDiff = extingFile
       ? newFile.size - extingFile.size
       : newFile.size
 
     // Update memoryUsage using add method
-    addToMemoryUsage(memoryUsageDiff)
+    adjustMemoryUsage(memoryUsageDiff)
 
     // Update file in store
     store.files[key] = newFile
   }
 
-  const addToMemoryUsage = (bytes: number) => {
-    store.memoryUsage += bytes
+  // Used to add undefined type checking to file retrieval
+  const getStoreFile = (filename: string): File | undefined => {
+    return store.files[filename]
+  }
+
+  const deleteStoreFile = (filename: string) => {
+    const file = getStoreFile(filename)
+
+    if (file) {
+      adjustMemoryUsage(-file.size)
+      delete store.files[filename]
+    }
+
+    return file
+  }
+
+  const adjustMemoryUsage = (bytes?: number) => {
+    if (bytes) {
+      store.memoryUsage += bytes
+    }
+
+    // Remove files if memory usage exceeds maxMemoryUsage
+    if (store.memoryUsage > config.maxMemoryUsage) {
+      const fileEntry = fileQueue.dequeue()
+      if (fileEntry) {
+        // Deleting file from store will invoke adjustMemoryUsage again
+        deleteStoreFile(fileEntry.filename)
+      }
+    }
   }
 
   return {
     // Removes an object at a given path
-    delete: async (path: string) => {
+    delete: async function (path: string) {
       /**
        * No soft-delete: delete from memlet first then delete from disklet
        * (because disklet delete might succeed in delete, but fail on
        * something else).
        */
-      delete store.files[path]
+      const file = deleteStoreFile(path)
+
+      if (file) {
+        fileQueue.remove(file)
+      }
+
       await disklet.delete(path)
     },
 
     // Lists objects from a given path
-    list: async (path?: string) => {
+    list: async function (path?: string) {
       // Direct pass-through to disklet
       return await disklet.list(path)
     },
 
     // Get an object at given path
-    getJson: async (filename: string) => {
-      const file = store.files[filename]
+    getJson: async function (filename: string) {
+      const file = getStoreFile(filename)
 
       if (file) {
         // Return file found in memory store
@@ -78,7 +131,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     },
 
     // Set an object at a given path
-    setJson: async (filename: string, data: any) => {
+    setJson: async function (filename: string, data: any) {
       /**
        * Write-through policy: write to disklet first then put it in the cache.
        */
@@ -90,7 +143,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     },
 
     // Introspective methods
-    _getStore: () => {
+    _getStore: function () {
       return store
     }
   }
