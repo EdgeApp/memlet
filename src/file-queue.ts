@@ -16,8 +16,9 @@ export function makeFileQueue() {
 
       while (
         endFileIndex >= 0 &&
-        file.lastTouchedTimestamp <= endFile.lastTouchedTimestamp &&
-        file.filename < endFile.filename
+        (file.lastTouchedTimestamp < endFile.lastTouchedTimestamp ||
+          (file.lastTouchedTimestamp === endFile.lastTouchedTimestamp &&
+            file.filename < endFile.filename))
       ) {
         endFile = files[--endFileIndex]
       }
