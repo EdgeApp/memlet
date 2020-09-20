@@ -5,18 +5,6 @@ import { describe, it } from 'mocha'
 import { makeMemlet, Memlet } from '../src/index'
 import { delay } from './utils'
 
-export async function createObjects(memlet: Memlet) {
-  const fileA = { content: 'file content' }
-  const folderA = { content: 'folder content' }
-  const fileB = { content: 'subfolder content' }
-
-  memlet.setJson('File-A', fileA)
-  memlet.setJson('Folder-A', folderA)
-  memlet.setJson('Folder-A/File-B', fileB)
-
-  return { fileA, folderA, fileB }
-}
-
 describe('memlet with evictions', async () => {
   it('can add files within maxMemoryUsage', async () => {
     const fileA = { content: 'some content' }
