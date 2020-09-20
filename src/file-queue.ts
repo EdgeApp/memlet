@@ -1,9 +1,9 @@
 import { File } from './types'
 
-export function makeFileQueue() {
+export function makeFileQueue(): FileQueue {
   const files: File[] = []
 
-  const fileQueue = {
+  const fileQueue: FileQueue = {
     /**
      * Inserts a file to the end of the queue with guaranteed ordering.
      * Files are ordered by lastTouchedTimestamp and then lexigraphical order
@@ -90,4 +90,12 @@ function indexOfFileInQueue(files: File[], file: File) {
 
   // Return -1 when file cannot be found.
   return -1
+}
+
+export interface FileQueue {
+  queue: (file: File) => void
+  dequeue: () => File | undefined
+  requeue: (file: File) => void
+  remove: (file: File) => void
+  list: () => File[]
 }
