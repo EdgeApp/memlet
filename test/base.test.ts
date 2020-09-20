@@ -16,7 +16,7 @@ export async function createObjects(memlet: Memlet) {
   return { fileA, folderA, fileB }
 }
 
-describe('memlet', async () => {
+describe('Memlet', async () => {
   const disklet = makeMemoryDisklet()
   const memlet = makeMemlet(disklet)
 

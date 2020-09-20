@@ -5,7 +5,7 @@ import { describe, it } from 'mocha'
 import { makeMemlet, Memlet } from '../src/index'
 import { delay } from './utils'
 
-describe('memlet with evictions', async () => {
+describe('Memlet with evictions', async () => {
   it('can add files within maxMemoryUsage', async () => {
     const fileA = { content: 'some content' }
     const fileASize = JSON.stringify(fileA).length
