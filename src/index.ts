@@ -89,9 +89,9 @@ export function makeMemlet(
     }
   }
 
-  return {
+  const memlet = {
     // Removes an object at a given path
-    delete: async function (path: string) {
+    delete: async (path: string) => {
       /**
        * No soft-delete: delete from memlet first then delete from disklet
        * (because disklet delete might succeed in delete, but fail on
@@ -107,13 +107,13 @@ export function makeMemlet(
     },
 
     // Lists objects from a given path
-    list: async function (path?: string) {
+    list: async (path?: string) => {
       // Direct pass-through to disklet
       return await disklet.list(path)
     },
 
     // Get an object at given path
-    getJson: async function (filename: string) {
+    getJson: async (filename: string) => {
       const file = getStoreFile(filename)
 
       if (file) {
@@ -131,7 +131,7 @@ export function makeMemlet(
     },
 
     // Set an object at a given path
-    setJson: async function (filename: string, data: any) {
+    setJson: async (filename: string, data: any) => {
       /**
        * Write-through policy: write to disklet first then put it in the cache.
        */
@@ -143,8 +143,10 @@ export function makeMemlet(
     },
 
     // Introspective methods
-    _getStore: function () {
+    _getStore: () => {
       return store
     }
   }
+
+  return memlet
 }
