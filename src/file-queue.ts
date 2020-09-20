@@ -15,7 +15,7 @@ export function makeFileQueue() {
       let endFile = files[endFileIndex]
 
       while (
-        endFileIndex > 0 &&
+        endFileIndex >= 0 &&
         file.lastTouchedTimestamp <= endFile.lastTouchedTimestamp &&
         file.filename < endFile.filename
       ) {
