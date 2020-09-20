@@ -29,7 +29,7 @@ export function makeMemlet(
   const updateStoreFile = (key: string, data: any, size: number) => {
     const lastTouchedTimestamp = Date.now()
 
-    const extingFile = store.files[key]
+    const existingFile = store.files[key]
 
     const newFile: File = {
       size,
@@ -38,7 +38,7 @@ export function makeMemlet(
       lastTouchedTimestamp
     }
 
-    if (extingFile) {
+    if (existingFile) {
       // Update file's position in the file queue
       fileQueue.requeue(newFile)
     } else {
@@ -47,8 +47,8 @@ export function makeMemlet(
     }
 
     // Calculate the difference in memory usage if there is an existing file
-    const memoryUsageDiff = extingFile
-      ? newFile.size - extingFile.size
+    const memoryUsageDiff = existingFile
+      ? newFile.size - existingFile.size
       : newFile.size
 
     // Update memoryUsage using add method
