@@ -117,6 +117,8 @@ export function makeMemlet(
       const file = getStoreFile(filename)
 
       if (file) {
+        // Update file in store to update it's timestamp
+        updateStoreFile(file.filename, file.data, file.size)
         // Return file found in memory store
         return file.data
       } else {
