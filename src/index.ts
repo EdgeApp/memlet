@@ -26,36 +26,43 @@ export function makeMemlet(
 
   // Private methods
 
-  const updateStoreFile = (key: string, data: any, size: number) => {
-    const lastTouchedTimestamp = Date.now()
-
-    const existingFile = store.files[key]
-
-    const newFile: File = {
-      size,
-      filename: key,
+  const addStoreFile = (filename: string, data: any, size: number) => {
+    const file: File = {
+      filename,
       data,
-      lastTouchedTimestamp
+      size,
+      lastTouchedTimestamp: Date.now()
     }
 
-    if (existingFile) {
+    // Add file to file queue
+    fileQueue.queue(file)
+
+    // Add file's size to memory usage
+    adjustMemoryUsage(file.size)
+
+    // Add file to the store files map
+    store.files[filename] = file
+  }
+
+  const updateStoreFile = (filename: string, data: any, size: number) => {
+    const file = getStoreFile(filename)
+
+    if (file) {
+      const previousSize = file.size
+
+      file.lastTouchedTimestamp = Date.now()
+      file.data = data
+      file.size = size
+
       // Update file's position in the file queue
-      fileQueue.requeue(newFile)
-    } else {
-      // Add file to the file queue
-      fileQueue.queue(newFile)
+      fileQueue.requeue(file)
+
+      // Calculate the difference in memory usage if there is an existing file
+      const sizeDiff = file.size - previousSize
+
+      // Update memory usage with size difference
+      adjustMemoryUsage(sizeDiff)
     }
-
-    // Calculate the difference in memory usage if there is an existing file
-    const memoryUsageDiff = existingFile
-      ? newFile.size - existingFile.size
-      : newFile.size
-
-    // Update memoryUsage using add method
-    adjustMemoryUsage(memoryUsageDiff)
-
-    // Update file in store
-    store.files[key] = newFile
   }
 
   // Used to add undefined type checking to file retrieval
@@ -122,11 +129,11 @@ export function makeMemlet(
         // Return file found in memory store
         return file.data
       } else {
-        // Retrieve file from disklet, cache it, then return
+        // Retrieve file from disklet, store it, then return
         const dataString = await disklet.getText(filename)
         const data = JSON.parse(dataString)
 
-        updateStoreFile(filename, data, dataString.length)
+        addStoreFile(filename, data, dataString.length)
 
         return data
       }
@@ -141,7 +148,11 @@ export function makeMemlet(
 
       await disklet.setText(filename, dataString)
 
-      updateStoreFile(filename, data, dataString.length)
+      if (filename in store.files) {
+        updateStoreFile(filename, data, dataString.length)
+      } else {
+        addStoreFile(filename, data, dataString.length)
+      }
     },
 
     // Introspective methods
