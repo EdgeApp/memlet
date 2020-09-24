@@ -9,7 +9,7 @@ describe('FileQueue', async () => {
   it('can queue files: files in order', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
@@ -21,7 +21,7 @@ describe('FileQueue', async () => {
   it('can queue files: file timestamp greater than all files', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
     const fileD = {
       ...fileC,
       filename: 'D',
@@ -39,7 +39,7 @@ describe('FileQueue', async () => {
   it('can queue files: file timestamp less than end', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
     const fileD = {
       ...fileC,
       filename: 'D',
@@ -57,7 +57,7 @@ describe('FileQueue', async () => {
   it('can queue files: file timestamp equal to end', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
     const fileD = {
       ...fileC,
       filename: 'D',
@@ -75,7 +75,7 @@ describe('FileQueue', async () => {
   it('can queue files: file timestamp lower than all files', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
     const fileD = {
       ...fileC,
       filename: 'D',
@@ -91,7 +91,7 @@ describe('FileQueue', async () => {
   })
 
   it('can queue files: lexicographically in order', async () => {
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], true)
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
     const fileQueue = makeFileQueue()
 
@@ -103,7 +103,7 @@ describe('FileQueue', async () => {
   })
 
   it('can queue files: lexicographically in reverse order', async () => {
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], true)
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
     const fileQueue = makeFileQueue()
 
@@ -115,7 +115,7 @@ describe('FileQueue', async () => {
   })
 
   it('can queue files: lexicographically in random order', async () => {
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], true)
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
     const fileQueue = makeFileQueue()
 
@@ -127,11 +127,11 @@ describe('FileQueue', async () => {
   })
 
   it('can queue files: File with same timestamp as a multiple files in the middle of the queue', async () => {
-    const firstFiles = createFiles(['X', 'Y', 'Z'])
+    const firstFiles = createFiles(['X', 'Y', 'Z'], 1)
     await delay(10)
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], true)
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
     await delay(10)
-    const lastFiles = createFiles(['abc', 'abc'])
+    const lastFiles = createFiles(['abc', 'abc'], 1)
 
     let fileQueue: FileQueue
 
@@ -176,7 +176,7 @@ describe('FileQueue', async () => {
   it('can dequeue files', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
@@ -191,7 +191,7 @@ describe('FileQueue', async () => {
   it('can requeue files at beginning', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
@@ -206,7 +206,7 @@ describe('FileQueue', async () => {
   it('can requeue files at middle', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
@@ -221,7 +221,7 @@ describe('FileQueue', async () => {
   it('can requeue files at end', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
@@ -236,7 +236,7 @@ describe('FileQueue', async () => {
   it('can requeue files at beginning (lexicographically)', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], true)
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
@@ -250,7 +250,7 @@ describe('FileQueue', async () => {
   it('can requeue files at middle (lexicographically)', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], true)
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
@@ -264,7 +264,7 @@ describe('FileQueue', async () => {
   it('can requeue files at end (lexicographically)', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], true)
+    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
@@ -278,14 +278,27 @@ describe('FileQueue', async () => {
   it('can remove files', async () => {
     const fileQueue = makeFileQueue()
 
-    const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'])
+    const [fileA, fileB, fileC, fileD] = createFiles(['A', 'B', 'C', 'D'], 1)
 
     fileQueue.queue(fileA)
     fileQueue.queue(fileB)
     fileQueue.queue(fileC)
+    fileQueue.queue(fileD)
+
+    fileQueue.remove(fileA)
+
+    expect(fileQueue.list()).deep.equals([fileB, fileC, fileD])
+
+    fileQueue.remove(fileC)
+
+    expect(fileQueue.list()).deep.equals([fileB, fileD])
+
+    fileQueue.remove(fileD)
+
+    expect(fileQueue.list()).deep.equals([fileB])
 
     fileQueue.remove(fileB)
 
-    expect(fileQueue.list()).deep.equals([fileA, fileC])
+    expect(fileQueue.list()).deep.equals([])
   })
 })
