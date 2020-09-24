@@ -6,7 +6,7 @@ import { makeFileQueue } from './file-queue'
 export * from './types'
 
 const defaultConfig: MemletConfig = {
-  maxMemoryUsage: 0
+  maxMemoryUsage: Infinity
 }
 
 export function makeMemlet(
@@ -87,7 +87,7 @@ export function makeMemlet(
     }
 
     // Remove files if memory usage exceeds maxMemoryUsage
-    if (config.maxMemoryUsage && store.memoryUsage > config.maxMemoryUsage) {
+    if (store.memoryUsage > config.maxMemoryUsage) {
       const fileEntry = fileQueue.dequeue()
       if (fileEntry) {
         // Deleting file from store will invoke adjustMemoryUsage again
