@@ -100,6 +100,9 @@ describe('Memlet with evictions', async () => {
     const store = memlet._getStore()
 
     await memlet.setJson('File-B', fileB)
+
+    expect(Object.keys(store.files)).deep.equals(['File-B'])
+
     await delay(1)
     await memlet.getJson('File-A')
 
