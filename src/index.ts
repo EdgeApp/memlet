@@ -6,7 +6,7 @@ import { makeFileQueue } from './file-queue'
 export * from './types'
 
 const defaultConfig: MemletConfig = {
-  maxMemoryUsage: 0
+  maxMemoryUsage: Infinity
 }
 
 export function makeMemlet(
@@ -14,6 +14,11 @@ export function makeMemlet(
   configOptions: Partial<MemletConfig> = {}
 ): Memlet {
   // Private properties
+
+  // Divide given maxMemoryUsage config parameter to respresent char-length
+  if (configOptions.maxMemoryUsage) {
+    configOptions.maxMemoryUsage = configOptions.maxMemoryUsage / 2
+  }
 
   const config = { ...defaultConfig, ...configOptions }
 
@@ -26,36 +31,22 @@ export function makeMemlet(
 
   // Private methods
 
-  const updateStoreFile = (key: string, data: any, size: number) => {
-    const lastTouchedTimestamp = Date.now()
-
-    const extingFile = store.files[key]
-
-    const newFile: File = {
-      size,
-      filename: key,
+  const addStoreFile = (filename: string, data: any, size: number) => {
+    const file: File = {
+      filename,
       data,
-      lastTouchedTimestamp
+      size,
+      lastTouchedTimestamp: Date.now()
     }
 
-    if (extingFile) {
-      // Update file's position in the file queue
-      fileQueue.requeue(newFile)
-    } else {
-      // Add file to the file queue
-      fileQueue.queue(newFile)
-    }
+    // Add file to file queue
+    fileQueue.queue(file)
 
-    // Calculate the difference in memory usage if there is an existing file
-    const memoryUsageDiff = extingFile
-      ? newFile.size - extingFile.size
-      : newFile.size
+    // Add file's size to memory usage
+    adjustMemoryUsage(file.size)
 
-    // Update memoryUsage using add method
-    adjustMemoryUsage(memoryUsageDiff)
-
-    // Update file in store
-    store.files[key] = newFile
+    // Add file to the store files map
+    store.files[filename] = file
   }
 
   // Used to add undefined type checking to file retrieval
@@ -89,9 +80,9 @@ export function makeMemlet(
     }
   }
 
-  return {
+  const memlet = {
     // Removes an object at a given path
-    delete: async function (path: string) {
+    delete: async (path: string) => {
       /**
        * No soft-delete: delete from memlet first then delete from disklet
        * (because disklet delete might succeed in delete, but fail on
@@ -107,31 +98,40 @@ export function makeMemlet(
     },
 
     // Lists objects from a given path
-    list: async function (path?: string) {
+    list: async (path?: string) => {
       // Direct pass-through to disklet
       return await disklet.list(path)
     },
 
     // Get an object at given path
-    getJson: async function (filename: string) {
+    getJson: async (filename: string) => {
       const file = getStoreFile(filename)
 
       if (file) {
+        // Update file in store to update it's timestamp
+        file.lastTouchedTimestamp = Date.now()
+
+        // Update file's position in the file queue
+        fileQueue.requeue(file)
+
+        // Invoke adjustMemoryUsage to potentially evict files
+        adjustMemoryUsage(0)
+
         // Return file found in memory store
         return file.data
       } else {
-        // Retrieve file from disklet, cache it, then return
+        // Retrieve file from disklet, store it, then return
         const dataString = await disklet.getText(filename)
         const data = JSON.parse(dataString)
 
-        updateStoreFile(filename, data, dataString.length)
+        addStoreFile(filename, data, dataString.length)
 
         return data
       }
     },
 
     // Set an object at a given path
-    setJson: async function (filename: string, data: any) {
+    setJson: async (filename: string, data: any) => {
       /**
        * Write-through policy: write to disklet first then put it in the cache.
        */
@@ -139,12 +139,33 @@ export function makeMemlet(
 
       await disklet.setText(filename, dataString)
 
-      updateStoreFile(filename, data, dataString.length)
+      const file = store.files[filename]
+
+      if (file) {
+        const previousSize = file.size
+
+        file.lastTouchedTimestamp = Date.now()
+        file.data = data
+        file.size = JSON.stringify(data).length
+
+        // Update file's position in the file queue
+        fileQueue.requeue(file)
+
+        // Calculate the difference in memory usage if there is an existing file
+        const sizeDiff = file.size - previousSize
+
+        // Update memory usage with size difference
+        adjustMemoryUsage(sizeDiff)
+      } else {
+        addStoreFile(filename, data, dataString.length)
+      }
     },
 
     // Introspective methods
-    _getStore: function () {
+    _getStore: () => {
       return store
     }
   }
+
+  return memlet
 }

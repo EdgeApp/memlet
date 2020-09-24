@@ -1,66 +1,71 @@
 import { File } from './types'
 
-export function makeFileQueue() {
-  const fileQueue: File[] = []
+export function makeFileQueue(): FileQueue {
+  const files: File[] = []
 
-  return {
+  const fileQueue: FileQueue = {
     /**
      * Inserts a file to the end of the queue with guaranteed ordering.
      * Files are ordered by lastTouchedTimestamp and then lexigraphical order
      * on filename.
      * @param file The file to insert into queue.
      */
-    queue: function (file: File) {
-      let endFileIndex = fileQueue.length - 1
-      let endFile = fileQueue[endFileIndex]
+    queue: (file: File) => {
+      let endFileIndex = files.length - 1
 
-      while (
-        endFileIndex > 0 &&
-        file.lastTouchedTimestamp <= endFile.lastTouchedTimestamp &&
-        file.filename < endFile.filename
-      ) {
-        endFile = fileQueue[--endFileIndex]
+      for (; endFileIndex >= 0; --endFileIndex) {
+        const endFile = files[endFileIndex]
+
+        if (
+          file.lastTouchedTimestamp > endFile.lastTouchedTimestamp ||
+          (file.lastTouchedTimestamp === endFile.lastTouchedTimestamp &&
+            file.filename > endFile.filename)
+        ) {
+          break
+        }
       }
 
-      fileQueue.splice(endFileIndex + 1, 0, file)
+      files.splice(endFileIndex + 1, 0, file)
     },
-    dequeue: function () {
-      return fileQueue.shift()
+    dequeue: () => {
+      return files.shift()
     },
-    requeue: function (file: File) {
-      this.remove(file)
+    requeue: (file: File) => {
+      fileQueue.remove(file)
       file.lastTouchedTimestamp = Date.now()
-      this.queue(file)
+      fileQueue.queue(file)
     },
-    remove: function (file: File) {
-      const index = indexOfFileInQueue(fileQueue, file)
+    remove: (file: File) => {
+      const index = indexOfFileInQueue(files, file)
 
       if (index >= 0) {
-        fileQueue.splice(index, 1)
+        files.splice(index, 1)
       }
     },
-    list: function () {
-      return fileQueue
+    list: () => {
+      return files
     }
   }
+
+  return fileQueue
 }
 
 /**
  * Uses binary search to find the index of a given file in a given fileQueue.
  *
- * @param fileQueue Array of File objects sorted by lastTouchTimestamp
+ * @param files Array of sorted File objects
  * @param file The File object for which to search.
  */
-function indexOfFileInQueue(fileQueue: File[], file: File) {
+function indexOfFileInQueue(files: File[], file: File) {
   let l = 0
-  let r = fileQueue.length - 1
+  let r = files.length - 1
 
   while (l <= r) {
     // Use bit shift over division to avoid floats
     let index = (l + r) >> 1
 
     // File in queue to compare
-    const fileInQueue = fileQueue[index]
+    const fileInQueue = files[index]
 
     // Direction to continue binary search. Zero is a match.
     // Negative is to search lower and positive is to search higher.
@@ -87,4 +92,12 @@ function indexOfFileInQueue(fileQueue: File[], file: File) {
 
   // Return -1 when file cannot be found.
   return -1
+}
+
+export interface FileQueue {
+  queue: (file: File) => void
+  dequeue: () => File | undefined
+  requeue: (file: File) => void
+  remove: (file: File) => void
+  list: () => File[]
 }
