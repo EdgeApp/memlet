@@ -12,15 +12,17 @@ export function makeFileQueue(): FileQueue {
      */
     queue: (file: File) => {
       let endFileIndex = files.length - 1
-      let endFile = files[endFileIndex]
 
-      while (
-        endFileIndex >= 0 &&
-        (file.lastTouchedTimestamp < endFile.lastTouchedTimestamp ||
+      for (; endFileIndex >= 0; --endFileIndex) {
+        const endFile = files[endFileIndex]
+
+        if (
+          file.lastTouchedTimestamp > endFile.lastTouchedTimestamp ||
           (file.lastTouchedTimestamp === endFile.lastTouchedTimestamp &&
-            file.filename < endFile.filename))
-      ) {
-        endFile = files[--endFileIndex]
+            file.filename > endFile.filename)
+        ) {
+          break
+        }
       }
 
       files.splice(endFileIndex + 1, 0, file)
