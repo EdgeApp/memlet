@@ -15,6 +15,11 @@ export function makeMemlet(
 ): Memlet {
   // Private properties
 
+  // Divide given maxMemoryUsage config parameter to respresent char-length
+  if (configOptions.maxMemoryUsage) {
+    configOptions.maxMemoryUsage = configOptions.maxMemoryUsage / 2
+  }
+
   const config = { ...defaultConfig, ...configOptions }
 
   const store: MemletStore = {

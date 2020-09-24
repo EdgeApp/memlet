@@ -3,12 +3,12 @@ import { makeMemoryDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
 import { makeMemlet } from '../src/index'
-import { delay } from './utils'
+import { delay, measureDataSize, measureMaxMemoryUsage } from './utils'
 
 describe('Memlet with evictions', async () => {
   it('can add files within maxMemoryUsage', async () => {
     const fileA = { content: 'some content' }
-    const fileASize = JSON.stringify(fileA).length
+    const fileASize = measureDataSize(fileA)
 
     const disklet = makeMemoryDisklet()
     const memlet = makeMemlet(disklet, { maxMemoryUsage: fileASize })
@@ -19,13 +19,13 @@ describe('Memlet with evictions', async () => {
     // Check files
     expect(Object.keys(store.files)).deep.equals(['File-A'])
     // Check memoryUsage
-    expect(store.memoryUsage).to.equal(fileASize)
+    expect(measureMaxMemoryUsage(store.memoryUsage)).to.equal(fileASize)
   })
 
   it('will remove old files when exceeding maxMemoryUsage', async () => {
     const fileA = { content: 'some content' }
     const fileB = { content: 'some other content' }
-    const fileBSize = JSON.stringify(fileB).length
+    const fileBSize = measureDataSize(fileB)
 
     const disklet = makeMemoryDisklet()
     const memlet = makeMemlet(disklet, {
@@ -40,7 +40,7 @@ describe('Memlet with evictions', async () => {
     // Check files
     expect(Object.keys(store.files)).deep.equals(['File-B'])
     // Check memoryUsage
-    expect(store.memoryUsage).to.equal(fileBSize)
+    expect(measureMaxMemoryUsage(store.memoryUsage)).to.equal(fileBSize)
   })
 
   it('will remove multiple small files after a large file', async () => {
@@ -56,7 +56,7 @@ describe('Memlet with evictions', async () => {
     }
 
     const maxMemoryUsage =
-      JSON.stringify(largeFile).length + JSON.stringify(fileE).length * 2
+      measureDataSize(largeFile) + measureDataSize(fileE) * 2
 
     const disklet = makeMemoryDisklet()
     const memlet = makeMemlet(disklet, {
@@ -87,7 +87,7 @@ describe('Memlet with evictions', async () => {
     const fileA = { content: 'some content' }
     const fileB = { content: 'some content' }
 
-    const maxMemoryUsage = JSON.stringify(fileA).length
+    const maxMemoryUsage = measureDataSize(fileA)
 
     const disklet = makeMemoryDisklet()
 
@@ -122,7 +122,7 @@ describe('Memlet with evictions', async () => {
     }
 
     const maxMemoryUsage =
-      JSON.stringify(largeFile).length + JSON.stringify(fileE).length * 2
+      measureDataSize(largeFile) + measureDataSize(fileE) * 2
 
     const disklet = makeMemoryDisklet()
 
@@ -156,7 +156,7 @@ describe('Memlet with evictions', async () => {
   it('will evict files after reading and writing files many times', async () => {
     const fileData = { content: 'some content' }
 
-    const maxMemoryUsage = JSON.stringify(fileData).length * 3
+    const maxMemoryUsage = measureDataSize(fileData) * 3
 
     const disklet = makeMemoryDisklet()
 

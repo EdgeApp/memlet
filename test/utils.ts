@@ -16,3 +16,8 @@ export const createFiles = (filenames: string[], delay: number): File[] => {
     lastTouchedTimestamp: timestamp + index * delay
   }))
 }
+
+export const measureDataSize = (data: any) => JSON.stringify(data).length * 2
+
+export const measureMaxMemoryUsage = (maxMemoryUsage: number) =>
+  maxMemoryUsage * 2
