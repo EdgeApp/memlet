@@ -49,27 +49,6 @@ export function makeMemlet(
     store.files[filename] = file
   }
 
-  const updateStoreFile = (filename: string, data: any, size: number) => {
-    const file = getStoreFile(filename)
-
-    if (file) {
-      const previousSize = file.size
-
-      file.lastTouchedTimestamp = Date.now()
-      file.data = data
-      file.size = size
-
-      // Update file's position in the file queue
-      fileQueue.requeue(file)
-
-      // Calculate the difference in memory usage if there is an existing file
-      const sizeDiff = file.size - previousSize
-
-      // Update memory usage with size difference
-      adjustMemoryUsage(sizeDiff)
-    }
-  }
-
   // Used to add undefined type checking to file retrieval
   const getStoreFile = (filename: string): File | undefined => {
     return store.files[filename]
@@ -130,7 +109,14 @@ export function makeMemlet(
 
       if (file) {
         // Update file in store to update it's timestamp
-        updateStoreFile(file.filename, file.data, file.size)
+        file.lastTouchedTimestamp = Date.now()
+
+        // Update file's position in the file queue
+        fileQueue.requeue(file)
+
+        // Invoke adjustMemoryUsage to potentially evict files
+        adjustMemoryUsage(0)
+
         // Return file found in memory store
         return file.data
       } else {
@@ -153,8 +139,23 @@ export function makeMemlet(
 
       await disklet.setText(filename, dataString)
 
-      if (filename in store.files) {
-        updateStoreFile(filename, data, dataString.length)
+      const file = store.files[filename]
+
+      if (file) {
+        const previousSize = file.size
+
+        file.lastTouchedTimestamp = Date.now()
+        file.data = data
+        file.size = JSON.stringify(data).length
+
+        // Update file's position in the file queue
+        fileQueue.requeue(file)
+
+        // Calculate the difference in memory usage if there is an existing file
+        const sizeDiff = file.size - previousSize
+
+        // Update memory usage with size difference
+        adjustMemoryUsage(sizeDiff)
       } else {
         addStoreFile(filename, data, dataString.length)
       }
