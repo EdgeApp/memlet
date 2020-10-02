@@ -29,5 +29,5 @@ export interface File {
   size: number
   data: any
   lastTouchedTimestamp: number
+  notFoundError?: any
 }
-
