@@ -9,6 +9,13 @@ const defaultConfig: MemletConfig = {
   maxMemoryUsage: Infinity
 }
 
+/**
+ * Regex to match error message for files not found errors.
+ * First, variation is from memory and localStorage memlet backends.
+ * Second variation is from iOS memlet backend.
+ */
+const notFoundErrorMessageRegex = /^Cannot load ".+"$|^Cannot read '.+'$/
+
 export function makeMemlet(
   disklet: Disklet,
   configOptions: Partial<MemletConfig> = {}
@@ -31,12 +38,18 @@ export function makeMemlet(
 
   // Private methods
 
-  const addStoreFile = (filename: string, data: any, size: number) => {
+  const addStoreFile = (
+    filename: string,
+    data: any,
+    size: number,
+    notFoundError?: any
+  ) => {
     const file: File = {
       filename,
       data,
       size,
-      lastTouchedTimestamp: Date.now()
+      lastTouchedTimestamp: Date.now(),
+      notFoundError
     }
 
     // Add file to file queue
@@ -117,16 +130,38 @@ export function makeMemlet(
         // Invoke adjustMemoryUsage to potentially evict files
         adjustMemoryUsage(0)
 
+        // If file contains a caught error, throw it.
+        if (file.notFoundError) {
+          throw file.notFoundError
+        }
+
         // Return file found in memory store
         return file.data
       } else {
-        // Retrieve file from disklet, store it, then return
-        const dataString = await disklet.getText(filename)
-        const data = JSON.parse(dataString)
+        try {
+          // Retrieve file from disklet, store it, then return
+          const dataString = await disklet.getText(filename)
+          const data = JSON.parse(dataString)
 
-        addStoreFile(filename, data, dataString.length)
+          addStoreFile(filename, data, dataString.length)
 
-        return data
+          return data
+        } catch (err) {
+          /**
+           * For file not found errors, store null data, include the error
+           * object, and then then re-throw. This saves needless disklet
+           * accesses on subsequent getJson invocations.
+           */
+          if (
+            err?.message.match(notFoundErrorMessageRegex) ||
+            err?.code === 'ENOENT'
+          ) {
+            addStoreFile(filename, null, 0, err)
+          }
+
+          // Re-throw the error from disklet
+          throw err
+        }
       }
     },
 
@@ -144,9 +179,13 @@ export function makeMemlet(
       if (file) {
         const previousSize = file.size
 
+        // Update all of file's fields
         file.lastTouchedTimestamp = Date.now()
         file.data = data
         file.size = JSON.stringify(data).length
+
+        // Remove error object if present
+        delete file.notFoundError
 
         // Update file's position in the file queue
         fileQueue.requeue(file)

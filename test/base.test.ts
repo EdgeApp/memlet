@@ -1,5 +1,5 @@
-import { expect } from 'chai'
-import { makeMemoryDisklet } from 'disklet'
+import { assert, expect } from 'chai'
+import { makeMemoryDisklet, makeNodeDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
 import { makeMemlet, Memlet } from '../src/index'
@@ -77,5 +77,81 @@ describe('Memlet', async () => {
     )
 
     expect(store.memoryUsage).to.equal(sumOfFileSizes)
+  })
+
+  it('will cache on file not found error (memory backend)', async () => {
+    const disklet = makeMemoryDisklet()
+    const memlet = makeMemlet(disklet)
+
+    let caughtError: any
+
+    // First read: Catch and save error
+    try {
+      await memlet.getJson('unknown')
+    } catch (err) {
+      caughtError = err
+    }
+
+    // Second read: Catch and compare error
+    try {
+      await memlet.getJson('unknown')
+    } catch (err) {
+      assert(
+        err === caughtError,
+        'Second error thrown is not an exact match to the first error'
+      )
+    }
+  })
+
+  it('will cache on file not found error (node backend)', async () => {
+    const disklet = makeNodeDisklet('./tmp')
+    const memlet = makeMemlet(disklet)
+
+    let caughtError: any
+
+    // First read: Catch and save error
+    try {
+      await memlet.getJson('unknown')
+    } catch (err) {
+      caughtError = err
+    }
+
+    // Second read: Catch and compare error
+    try {
+      await memlet.getJson('unknown')
+    } catch (err) {
+      if (err !== caughtError) {
+        assert.fail(
+          'Second error thrown is not an exact match to the first error'
+        )
+      }
+    }
+  })
+
+  it('will cache on file not found error but not throw after setJson', async () => {
+    const disklet = makeMemoryDisklet()
+    const memlet = makeMemlet(disklet)
+
+    const writeData = 'some data'
+    let caughtError: any
+
+    // First read should throw error
+    try {
+      await memlet.getJson('unknown')
+    } catch (err) {
+      caughtError = err
+    }
+
+    // Assert that error was caught
+    assert.isDefined(caughtError)
+
+    // Write data
+    await memlet.setJson('unknown', writeData)
+
+    // Second read should not throw error
+    const readData = await memlet.getJson('unknown')
+
+    // Read data should match write data
+    expect(readData).to.equal(writeData)
   })
 })
