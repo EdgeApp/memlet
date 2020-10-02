@@ -156,10 +156,7 @@ export function makeMemlet(
             err?.message.match(notFoundErrorMessageRegex) ||
             err?.code === 'ENOENT'
           ) {
-            const data = null
-            const dataString = JSON.stringify(data)
-
-            addStoreFile(filename, data, dataString.length, err)
+            addStoreFile(filename, null, 0, err)
           }
 
           // Re-throw the error from disklet
