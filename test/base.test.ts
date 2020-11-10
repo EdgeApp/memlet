@@ -2,7 +2,7 @@ import { assert, expect } from 'chai'
 import { makeMemoryDisklet, makeNodeDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
-import { makeMemlet, Memlet } from '../src/index'
+import { makeMemlet, Memlet, _getMemletState } from '../src/index'
 
 export async function createObjects(memlet: Memlet) {
   const fileA = { content: 'file content' }
@@ -69,14 +69,14 @@ describe('Memlet', async () => {
   })
 
   it('memory usage is correct', async () => {
-    const store = memlet._getStore()
+    const state = _getMemletState()
 
-    const sumOfFileSizes = Object.values(store.files).reduce(
+    const sumOfFileSizes = Object.values(state.store.files).reduce(
       (sum, file) => sum + file.size,
       0
     )
 
-    expect(store.memoryUsage).to.equal(sumOfFileSizes)
+    expect(state.store.memoryUsage).to.equal(sumOfFileSizes)
   })
 
   it('will cache on file not found error (memory backend)', async () => {

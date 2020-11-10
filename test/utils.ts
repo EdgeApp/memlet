@@ -1,4 +1,4 @@
-import { File } from '../src'
+import { File, MemletState } from '../src'
 
 export const delay = (ms: number) => {
   return new Promise(resolve => {
@@ -21,3 +21,8 @@ export const measureDataSize = (data: any) => JSON.stringify(data).length * 2
 
 export const measureMaxMemoryUsage = (maxMemoryUsage: number) =>
   maxMemoryUsage * 2
+
+export const getNormalizeStoreFilenames = (state: MemletState) => {
+  const filenames = Object.keys(state.store.files)
+  return filenames.map(filename => filename.replace(/^\d+:/, ''))
+}

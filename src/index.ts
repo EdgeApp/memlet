@@ -1,6 +1,6 @@
 import { Disklet } from 'disklet'
 
-import { Memlet, MemletStore, File, MemletConfig } from './types'
+import { Memlet, File, MemletConfig, MemletState } from './types'
 import { makeFileQueue } from './file-queue'
 
 export * from './types'
@@ -9,6 +9,21 @@ const defaultConfig: MemletConfig = {
   maxMemoryUsage: Infinity
 }
 
+const state: MemletState = {
+  config: { ...defaultConfig },
+  store: {
+    memoryUsage: 0,
+    files: {}
+  },
+  fileQueue: makeFileQueue()
+}
+
+/**
+ * This is to keep a running count of instaniated memlets in order to determine
+ * a unique ID for each instance.
+ */
+let countOfMemletInstances = 0
+
 /**
  * Regex to match error message for files not found errors.
  * First, variation is from memory and localStorage memlet backends.
@@ -16,34 +31,25 @@ const defaultConfig: MemletConfig = {
  */
 const notFoundErrorMessageRegex = /^Cannot load ".+"$|^Cannot read '.+'$/
 
-export function makeMemlet(
-  disklet: Disklet,
-  configOptions: Partial<MemletConfig> = {}
-): Memlet {
+export function makeMemlet(disklet: Disklet): Memlet {
   // Private properties
 
-  // Divide given maxMemoryUsage config parameter to respresent char-length
-  if (configOptions.maxMemoryUsage) {
-    configOptions.maxMemoryUsage = configOptions.maxMemoryUsage / 2
-  }
-
-  const config = { ...defaultConfig, ...configOptions }
-
-  const store: MemletStore = {
-    memoryUsage: 0,
-    files: {}
-  }
-
-  const fileQueue = makeFileQueue()
+  /**
+   * A unique ID for the memlet instance. The ID is used as a prefix for each
+   * file's key or filename in the shared file cache.
+   */
+  const memletInstanceId = countOfMemletInstances++
 
   // Private methods
 
   const addStoreFile = (
-    filename: string,
+    path: string,
     data: any,
     size: number,
     notFoundError?: any
   ) => {
+    const filename = getCacheFilename(path)
+
     const file: File = {
       filename,
       data,
@@ -53,18 +59,18 @@ export function makeMemlet(
     }
 
     // Add file to file queue
-    fileQueue.queue(file)
+    state.fileQueue.queue(file)
 
     // Add file's size to memory usage
     adjustMemoryUsage(file.size)
 
     // Add file to the store files map
-    store.files[filename] = file
+    state.store.files[filename] = file
   }
 
   // Used to add undefined type checking to file retrieval
   const getStoreFile = (filename: string): File | undefined => {
-    return store.files[filename]
+    return state.store.files[filename]
   }
 
   const deleteStoreFile = (filename: string) => {
@@ -72,7 +78,7 @@ export function makeMemlet(
 
     if (file) {
       adjustMemoryUsage(-file.size)
-      delete store.files[filename]
+      delete state.store.files[filename]
     }
 
     return file
@@ -80,17 +86,21 @@ export function makeMemlet(
 
   const adjustMemoryUsage = (bytes?: number) => {
     if (bytes) {
-      store.memoryUsage += bytes
+      state.store.memoryUsage += bytes
     }
 
     // Remove files if memory usage exceeds maxMemoryUsage
-    if (store.memoryUsage > config.maxMemoryUsage) {
-      const fileEntry = fileQueue.dequeue()
+    if (state.store.memoryUsage > state.config.maxMemoryUsage) {
+      const fileEntry = state.fileQueue.dequeue()
       if (fileEntry) {
         // Deleting file from store will invoke adjustMemoryUsage again
         deleteStoreFile(fileEntry.filename)
       }
     }
+  }
+
+  const getCacheFilename = (path: string) => {
+    return memletInstanceId + ':' + path
   }
 
   const memlet = {
@@ -104,7 +114,7 @@ export function makeMemlet(
       const file = deleteStoreFile(path)
 
       if (file) {
-        fileQueue.remove(file)
+        state.fileQueue.remove(file)
       }
 
       await disklet.delete(path)
@@ -117,7 +127,8 @@ export function makeMemlet(
     },
 
     // Get an object at given path
-    getJson: async (filename: string) => {
+    getJson: async (path: string) => {
+      const filename = getCacheFilename(path)
       const file = getStoreFile(filename)
 
       if (file) {
@@ -125,7 +136,7 @@ export function makeMemlet(
         file.lastTouchedTimestamp = Date.now()
 
         // Update file's position in the file queue
-        fileQueue.requeue(file)
+        state.fileQueue.requeue(file)
 
         // Invoke adjustMemoryUsage to potentially evict files
         adjustMemoryUsage(0)
@@ -140,10 +151,10 @@ export function makeMemlet(
       } else {
         try {
           // Retrieve file from disklet, store it, then return
-          const dataString = await disklet.getText(filename)
+          const dataString = await disklet.getText(path)
           const data = JSON.parse(dataString)
 
-          addStoreFile(filename, data, dataString.length)
+          addStoreFile(path, data, dataString.length)
 
           return data
         } catch (err) {
@@ -156,7 +167,7 @@ export function makeMemlet(
             err?.message.match(notFoundErrorMessageRegex) ||
             err?.code === 'ENOENT'
           ) {
-            addStoreFile(filename, null, 0, err)
+            addStoreFile(path, null, 0, err)
           }
 
           // Re-throw the error from disklet
@@ -166,15 +177,16 @@ export function makeMemlet(
     },
 
     // Set an object at a given path
-    setJson: async (filename: string, data: any) => {
+    setJson: async (path: string, data: any) => {
       /**
        * Write-through policy: write to disklet first then put it in the cache.
        */
       const dataString = JSON.stringify(data)
 
-      await disklet.setText(filename, dataString)
+      await disklet.setText(path, dataString)
 
-      const file = store.files[filename]
+      const filename = getCacheFilename(path)
+      const file = getStoreFile(filename)
 
       if (file) {
         const previousSize = file.size
@@ -188,7 +200,7 @@ export function makeMemlet(
         delete file.notFoundError
 
         // Update file's position in the file queue
-        fileQueue.requeue(file)
+        state.fileQueue.requeue(file)
 
         // Calculate the difference in memory usage if there is an existing file
         const sizeDiff = file.size - previousSize
@@ -196,15 +208,41 @@ export function makeMemlet(
         // Update memory usage with size difference
         adjustMemoryUsage(sizeDiff)
       } else {
-        addStoreFile(filename, data, dataString.length)
+        addStoreFile(path, data, dataString.length)
       }
-    },
-
-    // Introspective methods
-    _getStore: () => {
-      return store
     }
   }
 
   return memlet
+}
+
+// Update's module's config
+export function setMemletConfig(config: Partial<MemletConfig>) {
+  // Divide given maxMemoryUsage config parameter to respresent char-length
+  if (config.maxMemoryUsage) {
+    config.maxMemoryUsage = config.maxMemoryUsage / 2
+  }
+
+  // Update state's config
+  state.config = { ...state.config, ...config }
+}
+
+// Clears the file cache fields in the module's state
+export function clearMemletCache() {
+  state.store.memoryUsage = 0
+  state.store.files = {}
+  state.fileQueue = makeFileQueue()
+}
+
+// Resets config and clears file cache
+export function resetMemletState() {
+  state.config = { ...defaultConfig }
+  clearMemletCache()
+}
+
+// Internal Methods:
+
+// Get the module's state object
+export function _getMemletState(): Readonly<MemletState> {
+  return state
 }

@@ -1,4 +1,5 @@
 import { DiskletListing } from 'disklet'
+import { FileQueue } from './file-queue'
 
 export interface Memlet {
   list: (path?: string) => Promise<DiskletListing>
@@ -7,8 +8,12 @@ export interface Memlet {
 
   getJson: (path: string) => Promise<any>
   setJson: (path: string, obj: any) => Promise<void>
+}
 
-  _getStore: () => MemletStore
+export interface MemletState {
+  config: MemletConfig
+  store: MemletStore
+  fileQueue: FileQueue
 }
 
 export interface MemletStore {

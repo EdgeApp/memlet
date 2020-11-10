@@ -2,24 +2,43 @@ import { expect } from 'chai'
 import { makeMemoryDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
-import { makeMemlet } from '../src/index'
-import { delay, measureDataSize, measureMaxMemoryUsage } from './utils'
+import {
+  makeMemlet,
+  resetMemletState,
+  setMemletConfig,
+  _getMemletState
+} from '../src/index'
+import {
+  delay,
+  getNormalizeStoreFilenames,
+  measureDataSize,
+  measureMaxMemoryUsage
+} from './utils'
+
+import { beforeEach } from 'mocha'
 
 describe('Memlet with evictions', async () => {
+  beforeEach('reset memlet state', () => {
+    resetMemletState()
+  })
+
+  const state = _getMemletState()
+
   it('can add files within maxMemoryUsage', async () => {
     const fileA = { content: 'some content' }
     const fileASize = measureDataSize(fileA)
 
+    setMemletConfig({ maxMemoryUsage: fileASize })
+
     const disklet = makeMemoryDisklet()
-    const memlet = makeMemlet(disklet, { maxMemoryUsage: fileASize })
-    const store = memlet._getStore()
+    const memlet = makeMemlet(disklet)
 
     await memlet.setJson('File-A', fileA)
 
     // Check files
-    expect(Object.keys(store.files)).deep.equals(['File-A'])
+    expect(getNormalizeStoreFilenames(state)).deep.equals(['File-A'])
     // Check memoryUsage
-    expect(measureMaxMemoryUsage(store.memoryUsage)).to.equal(fileASize)
+    expect(measureMaxMemoryUsage(state.store.memoryUsage)).to.equal(fileASize)
   })
 
   it('will remove old files when exceeding maxMemoryUsage', async () => {
@@ -27,20 +46,19 @@ describe('Memlet with evictions', async () => {
     const fileB = { content: 'some other content' }
     const fileBSize = measureDataSize(fileB)
 
+    setMemletConfig({ maxMemoryUsage: fileBSize })
+
     const disklet = makeMemoryDisklet()
-    const memlet = makeMemlet(disklet, {
-      maxMemoryUsage: fileBSize
-    })
-    const store = memlet._getStore()
+    const memlet = makeMemlet(disklet)
 
     await memlet.setJson('File-A', fileA)
     await delay(10)
     await memlet.setJson('File-B', fileB)
 
     // Check files
-    expect(Object.keys(store.files)).deep.equals(['File-B'])
+    expect(getNormalizeStoreFilenames(state)).deep.equals(['File-B'])
     // Check memoryUsage
-    expect(measureMaxMemoryUsage(store.memoryUsage)).to.equal(fileBSize)
+    expect(measureMaxMemoryUsage(state.store.memoryUsage)).to.equal(fileBSize)
   })
 
   it('will remove multiple small files after a large file', async () => {
@@ -58,11 +76,10 @@ describe('Memlet with evictions', async () => {
     const maxMemoryUsage =
       measureDataSize(largeFile) + measureDataSize(fileE) * 2
 
+    setMemletConfig({ maxMemoryUsage })
+
     const disklet = makeMemoryDisklet()
-    const memlet = makeMemlet(disklet, {
-      maxMemoryUsage
-    })
-    const store = memlet._getStore()
+    const memlet = makeMemlet(disklet)
 
     await memlet.setJson('File-A', fileA)
     await delay(1)
@@ -76,7 +93,7 @@ describe('Memlet with evictions', async () => {
     await delay(1)
     await memlet.setJson('Large-File', largeFile)
 
-    expect(Object.keys(store.files)).deep.equals([
+    expect(getNormalizeStoreFilenames(state)).deep.equals([
       'File-D',
       'File-E',
       'Large-File'
@@ -89,24 +106,23 @@ describe('Memlet with evictions', async () => {
 
     const maxMemoryUsage = measureDataSize(fileA)
 
+    setMemletConfig({ maxMemoryUsage })
+
     const disklet = makeMemoryDisklet()
 
     // Persisted file
     await disklet.setText('File-A', JSON.stringify(fileA))
 
-    const memlet = makeMemlet(disklet, {
-      maxMemoryUsage
-    })
-    const store = memlet._getStore()
+    const memlet = makeMemlet(disklet)
 
     await memlet.setJson('File-B', fileB)
 
-    expect(Object.keys(store.files)).deep.equals(['File-B'])
+    expect(getNormalizeStoreFilenames(state)).deep.equals(['File-B'])
 
     await delay(1)
     await memlet.getJson('File-A')
 
-    expect(Object.keys(store.files)).deep.equals(['File-A'])
+    expect(getNormalizeStoreFilenames(state)).deep.equals(['File-A'])
   })
 
   it('will evict multiple files after reading a large persisted file', async () => {
@@ -124,15 +140,14 @@ describe('Memlet with evictions', async () => {
     const maxMemoryUsage =
       measureDataSize(largeFile) + measureDataSize(fileE) * 2
 
+    setMemletConfig({ maxMemoryUsage })
+
     const disklet = makeMemoryDisklet()
 
     // Persisted file
     await disklet.setText('Large-File', JSON.stringify(largeFile))
 
-    const memlet = makeMemlet(disklet, {
-      maxMemoryUsage
-    })
-    const store = memlet._getStore()
+    const memlet = makeMemlet(disklet)
 
     await memlet.setJson('File-A', fileA)
     await delay(1)
@@ -146,7 +161,7 @@ describe('Memlet with evictions', async () => {
     await delay(1)
     await memlet.getJson('Large-File')
 
-    expect(Object.keys(store.files)).deep.equals([
+    expect(getNormalizeStoreFilenames(state)).deep.equals([
       'File-D',
       'File-E',
       'Large-File'
@@ -158,12 +173,11 @@ describe('Memlet with evictions', async () => {
 
     const maxMemoryUsage = measureDataSize(fileData) * 3
 
+    setMemletConfig({ maxMemoryUsage })
+
     const disklet = makeMemoryDisklet()
 
-    const memlet = makeMemlet(disklet, {
-      maxMemoryUsage
-    })
-    const store = memlet._getStore()
+    const memlet = makeMemlet(disklet)
 
     await memlet.setJson('File-A', fileData)
 
@@ -175,7 +189,11 @@ describe('Memlet with evictions', async () => {
 
     await memlet.setJson('File-E', fileData)
 
-    expect(Object.keys(store.files)).deep.equals(['File-C', 'File-D', 'File-E'])
+    expect(getNormalizeStoreFilenames(state)).deep.equals([
+      'File-C',
+      'File-D',
+      'File-E'
+    ])
 
     await delay(10)
 
@@ -183,13 +201,21 @@ describe('Memlet with evictions', async () => {
 
     await memlet.getJson('File-A')
 
-    expect(Object.keys(store.files)).deep.equals(['File-E', 'File-B', 'File-A'])
+    expect(getNormalizeStoreFilenames(state)).deep.equals([
+      'File-E',
+      'File-B',
+      'File-A'
+    ])
 
     await delay(10)
 
     await memlet.setJson('File-F', fileData)
 
-    expect(Object.keys(store.files)).deep.equals(['File-B', 'File-A', 'File-F'])
+    expect(getNormalizeStoreFilenames(state)).deep.equals([
+      'File-B',
+      'File-A',
+      'File-F'
+    ])
 
     await delay(10)
 
@@ -197,6 +223,10 @@ describe('Memlet with evictions', async () => {
     await memlet.getJson('File-D')
     await memlet.getJson('File-E')
 
-    expect(Object.keys(store.files)).deep.equals(['File-C', 'File-D', 'File-E'])
+    expect(getNormalizeStoreFilenames(state)).deep.equals([
+      'File-C',
+      'File-D',
+      'File-E'
+    ])
   })
 })
