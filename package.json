@@ -13,7 +13,6 @@
   ],
   "main": "lib/memlet.cjs.js",
   "module": "lib/memlet.js",
-  "browser": "lib/memlet.web.js",
   "types": "lib/index.d.ts",
   "scripts": {
     "precommit": "npm run prepare",
