@@ -1,6 +1,6 @@
 {
   "name": "memlet",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Memory caching library written on top of the Disklet",
   "author": "Edge (Dba Airbitz, Inc.)",
   "license": "MIT",
