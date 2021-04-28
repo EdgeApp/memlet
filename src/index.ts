@@ -19,7 +19,7 @@ const state: MemletState = {
 }
 
 /**
- * This is to keep a running count of instaniated memlets in order to determine
+ * This is to keep a running count of memlet instances in order to determine
  * a unique ID for each instance.
  */
 let countOfMemletInstances = 0
