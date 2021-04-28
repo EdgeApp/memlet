@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import { describe, it } from 'mocha'
 
+import { File } from '../src'
 import { FileQueue, makeFileQueue } from '../src/file-queue'
 import { createFiles, delay } from './utils'
 
@@ -21,9 +22,9 @@ describe('FileQueue', () => {
     const fileQueue = makeFileQueue()
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
-    const fileD = {
+    const fileD: File = {
       ...fileC,
-      filename: 'D',
+      key: 'D',
       lastTouchedTimestamp: fileC.lastTouchedTimestamp + 1000
     }
 
@@ -39,9 +40,9 @@ describe('FileQueue', () => {
     const fileQueue = makeFileQueue()
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
-    const fileD = {
+    const fileD: File = {
       ...fileC,
-      filename: 'D',
+      key: 'D',
       lastTouchedTimestamp: fileC.lastTouchedTimestamp - 1
     }
 
@@ -57,9 +58,9 @@ describe('FileQueue', () => {
     const fileQueue = makeFileQueue()
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
-    const fileD = {
+    const fileD: File = {
       ...fileC,
-      filename: 'D',
+      key: 'D',
       lastTouchedTimestamp: fileC.lastTouchedTimestamp
     }
 
@@ -75,9 +76,9 @@ describe('FileQueue', () => {
     const fileQueue = makeFileQueue()
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
-    const fileD = {
+    const fileD: File = {
       ...fileC,
-      filename: 'D',
+      key: 'D',
       lastTouchedTimestamp: fileC.lastTouchedTimestamp - 1000
     }
 
@@ -136,12 +137,12 @@ describe('FileQueue', () => {
 
     // Assertion will be the same for all checks
     const assertion = (fileQueue: FileQueue): void => {
-      expect(fileQueue.list().map(file => file.filename)).deep.equals([
-        ...firstFiles.map(file => file.filename),
-        fileA.filename,
-        fileB.filename,
-        fileC.filename,
-        ...lastFiles.map(file => file.filename)
+      expect(fileQueue.list().map(file => file.key)).deep.equals([
+        ...firstFiles.map(file => file.key),
+        fileA.key,
+        fileB.key,
+        fileC.key,
+        ...lastFiles.map(file => file.key)
       ])
     }
 

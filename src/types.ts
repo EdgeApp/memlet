@@ -27,11 +27,11 @@ export interface MemletConfig {
 }
 
 export interface FileMap {
-  [filename: string]: File
+  [key: string]: File
 }
 
 export interface File {
-  filename: string
+  key: string
   size: number
   data: any
   lastTouchedTimestamp: number

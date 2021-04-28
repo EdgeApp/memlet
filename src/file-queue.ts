@@ -7,7 +7,7 @@ export function makeFileQueue(): FileQueue {
     /**
      * Inserts a file to the end of the queue with guaranteed ordering.
      * Files are ordered by lastTouchedTimestamp and then lexigraphical order
-     * on filename.
+     * on key.
      * @param file The file to insert into queue.
      */
     queue: (file: File) => {
@@ -19,7 +19,7 @@ export function makeFileQueue(): FileQueue {
         if (
           file.lastTouchedTimestamp > endFile.lastTouchedTimestamp ||
           (file.lastTouchedTimestamp === endFile.lastTouchedTimestamp &&
-            file.filename > endFile.filename)
+            file.key > endFile.key)
         ) {
           break
         }
@@ -75,7 +75,7 @@ function indexOfFileInQueue(files: File[], file: File): number {
         : // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
           file.lastTouchedTimestamp - fileInQueue.lastTouchedTimestamp ||
           // Fallback to lexigraphical comparison (if timestamps match)
-          (file.filename > fileInQueue.filename ? 1 : -1)
+          (file.key > fileInQueue.key ? 1 : -1)
 
     if (direction > 0) {
       // To search higher, increase left

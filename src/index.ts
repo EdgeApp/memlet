@@ -37,7 +37,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
   /**
    * A unique ID for the memlet instance. The ID is used as a prefix for each
-   * file's key or filename in the shared file cache.
+   * file's key in the shared file cache.
    */
   const memletInstanceId = countOfMemletInstances++
 
@@ -61,19 +61,19 @@ export function makeMemlet(disklet: Disklet): Memlet {
     // Lists objects from a given path
     list: async (path: string = '') => {
       const filepath = normalizePath(path)
-      const filename = getCacheFilename(filepath)
+      const key = getCacheKey(filepath)
       const out: DiskletListing = {}
 
       // Try the path as a file:
-      if (state.store.files[filename] != null) out[filepath] = 'file'
+      if (state.store.files[key] != null) out[filepath] = 'file'
 
       // Try the path as a folder:
-      const foldername = getCacheFilename(folderizePath(filepath))
+      const folderKey = getCacheKey(folderizePath(filepath))
       for (const key of Object.keys(state.store.files)) {
-        if (key.indexOf(foldername) !== 0) continue
+        if (key.indexOf(folderKey) !== 0) continue
 
         const pathOfKey = key.split(':')[1]
-        const slashIndex = pathOfKey.indexOf('/', foldername.length)
+        const slashIndex = pathOfKey.indexOf('/', folderKey.length)
         if (slashIndex < 0) out[pathOfKey] = 'file'
         else out[pathOfKey.slice(0, slashIndex)] = 'folder'
       }
@@ -83,8 +83,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
     // Get an object at given path
     getJson: async (path: string) => {
-      const filename = getCacheFilename(path)
-      const file = getStoreFile(filename)
+      const key = getCacheKey(path)
+      const file = getStoreFile(key)
 
       if (file != null) {
         // Update file in store to update it's timestamp
@@ -140,8 +140,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
       await disklet.setText(path, dataString)
 
-      const filename = getCacheFilename(path)
-      const file = getStoreFile(filename)
+      const key = getCacheKey(path)
+      const file = getStoreFile(key)
 
       if (file != null) {
         const previousSize = file.size
@@ -178,10 +178,10 @@ export function makeMemlet(disklet: Disklet): Memlet {
     size: number,
     notFoundError?: any
   ): void {
-    const filename = getCacheFilename(path)
+    const key = getCacheKey(path)
 
     const file: File = {
-      filename,
+      key,
       data,
       size,
       lastTouchedTimestamp: Date.now(),
@@ -195,21 +195,21 @@ export function makeMemlet(disklet: Disklet): Memlet {
     adjustMemoryUsage(file.size)
 
     // Add file to the store files map
-    state.store.files[filename] = file
+    state.store.files[key] = file
   }
 
   // Used to add undefined type checking to file retrieval
-  function getStoreFile(filename: string): File | undefined {
-    return state.store.files[filename]
+  function getStoreFile(key: string): File | undefined {
+    return state.store.files[key]
   }
 
-  function deleteStoreFile(filename: string): File | undefined {
-    const file = getStoreFile(filename)
+  function deleteStoreFile(key: string): File | undefined {
+    const file = getStoreFile(key)
 
     if (file != null) {
       adjustMemoryUsage(-file.size)
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      delete state.store.files[filename]
+      delete state.store.files[key]
     }
 
     return file
@@ -225,12 +225,12 @@ export function makeMemlet(disklet: Disklet): Memlet {
       const fileEntry = state.fileQueue.dequeue()
       if (fileEntry != null) {
         // Deleting file from store will invoke adjustMemoryUsage again
-        deleteStoreFile(fileEntry.filename)
+        deleteStoreFile(fileEntry.key)
       }
     }
   }
 
-  function getCacheFilename(path: string): string {
+  function getCacheKey(path: string): string {
     return `${memletInstanceId}:${path}`
   }
 }

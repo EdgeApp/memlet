@@ -6,11 +6,11 @@ export const delay = (ms: number): Promise<void> => {
   })
 }
 
-export const createFiles = (filenames: string[], delay: number): File[] => {
+export const createFiles = (keys: string[], delay: number): File[] => {
   const timestamp = Date.now()
 
-  return filenames.map((filename, index) => ({
-    filename,
+  return keys.map((key, index) => ({
+    key,
     data: 'content',
     size: 123,
     lastTouchedTimestamp: timestamp + index * delay
@@ -24,6 +24,6 @@ export const measureMaxMemoryUsage = (maxMemoryUsage: number): number =>
   maxMemoryUsage * 2
 
 export const getNormalizeStoreFilenames = (state: MemletState): string[] => {
-  const filenames = Object.keys(state.store.files)
-  return filenames.map(filename => filename.replace(/^\d+:/, ''))
+  const keys = Object.keys(state.store.files)
+  return keys.map(key => key.replace(/^\d+:/, ''))
 }
