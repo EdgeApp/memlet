@@ -1,6 +1,7 @@
-import { Disklet } from 'disklet'
+import { Disklet, DiskletListing } from 'disklet'
 
 import { makeFileQueue } from './file-queue'
+import { folderizePath, normalizePath } from './helpers/paths'
 import { File, Memlet, MemletConfig, MemletState } from './types'
 
 export * from './types'
@@ -58,9 +59,26 @@ export function makeMemlet(disklet: Disklet): Memlet {
     },
 
     // Lists objects from a given path
-    list: async (path?: string) => {
-      // Direct pass-through to disklet
-      return await disklet.list(path)
+    list: async (path: string = '') => {
+      const filepath = normalizePath(path)
+      const filename = getCacheFilename(filepath)
+      const out: DiskletListing = {}
+
+      // Try the path as a file:
+      if (state.store.files[filename] != null) out[filepath] = 'file'
+
+      // Try the path as a folder:
+      const foldername = getCacheFilename(folderizePath(filepath))
+      for (const key of Object.keys(state.store.files)) {
+        if (key.indexOf(foldername) !== 0) continue
+
+        const pathOfKey = key.split(':')[1]
+        const slashIndex = pathOfKey.indexOf('/', foldername.length)
+        if (slashIndex < 0) out[pathOfKey] = 'file'
+        else out[pathOfKey.slice(0, slashIndex)] = 'folder'
+      }
+
+      return out
     },
 
     // Get an object at given path
