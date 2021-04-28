@@ -1,12 +1,12 @@
 import { expect } from 'chai'
 import { makeMemoryDisklet } from 'disklet'
-import { describe, it } from 'mocha'
+import { beforeEach, describe, it } from 'mocha'
 
 import {
+  _getMemletState,
   makeMemlet,
   resetMemletState,
-  setMemletConfig,
-  _getMemletState
+  setMemletConfig
 } from '../src/index'
 import {
   delay,
@@ -15,9 +15,7 @@ import {
   measureMaxMemoryUsage
 } from './utils'
 
-import { beforeEach } from 'mocha'
-
-describe('Memlet with evictions', async () => {
+describe('Memlet with evictions', () => {
   beforeEach('reset memlet state', () => {
     resetMemletState()
   })

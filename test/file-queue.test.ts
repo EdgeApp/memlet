@@ -2,10 +2,9 @@ import { expect } from 'chai'
 import { describe, it } from 'mocha'
 
 import { FileQueue, makeFileQueue } from '../src/file-queue'
-import { File } from '../src'
 import { createFiles, delay } from './utils'
 
-describe('FileQueue', async () => {
+describe('FileQueue', () => {
   it('can queue files: files in order', async () => {
     const fileQueue = makeFileQueue()
 
@@ -136,7 +135,7 @@ describe('FileQueue', async () => {
     let fileQueue: FileQueue
 
     // Assertion will be the same for all checks
-    const assertion = (fileQueue: FileQueue) =>
+    const assertion = (fileQueue: FileQueue): void => {
       expect(fileQueue.list().map(file => file.filename)).deep.equals([
         ...firstFiles.map(file => file.filename),
         fileA.filename,
@@ -144,6 +143,7 @@ describe('FileQueue', async () => {
         fileC.filename,
         ...lastFiles.map(file => file.filename)
       ])
+    }
 
     // Check with first of lexicographical order last
     fileQueue = makeFileQueue()

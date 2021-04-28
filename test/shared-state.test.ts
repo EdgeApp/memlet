@@ -3,13 +3,11 @@ import chaiAsPromised from 'chai-as-promised'
 import { makeMemoryDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
-use(chaiAsPromised)
-
 import {
   _getMemletState,
   makeMemlet,
-  setMemletConfig,
-  resetMemletState
+  resetMemletState,
+  setMemletConfig
 } from '../src/index'
 import {
   delay,
@@ -18,7 +16,9 @@ import {
   measureMaxMemoryUsage
 } from './utils'
 
-describe('Memlets with shared state', async () => {
+use(chaiAsPromised)
+
+describe('Memlets with shared state', () => {
   beforeEach('reset memlet state', () => {
     resetMemletState()
   })
@@ -68,7 +68,13 @@ describe('Memlets with shared state', async () => {
     await memletB.getJson('File-B')
 
     // Cannot access files
-    expect(memletA.getJson('File-B')).to.be.rejectedWith('Cannot load "File-B"')
-    expect(memletB.getJson('File-A')).to.be.rejectedWith('Cannot load "File-A"')
+    // eslint-disable-next-line no-void
+    void expect(memletA.getJson('File-B')).to.be.rejectedWith(
+      'Cannot load "File-B"'
+    )
+    // eslint-disable-next-line no-void
+    void expect(memletB.getJson('File-A')).to.be.rejectedWith(
+      'Cannot load "File-A"'
+    )
   })
 })

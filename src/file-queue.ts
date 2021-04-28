@@ -56,13 +56,13 @@ export function makeFileQueue(): FileQueue {
  * @param files Array of sorted File objects
  * @param file The File object for which to search.
  */
-function indexOfFileInQueue(files: File[], file: File) {
+function indexOfFileInQueue(files: File[], file: File): number {
   let l = 0
   let r = files.length - 1
 
   while (l <= r) {
     // Use bit shift over division to avoid floats
-    let index = (l + r) >> 1
+    const index = (l + r) >> 1
 
     // File in queue to compare
     const fileInQueue = files[index]
@@ -72,10 +72,9 @@ function indexOfFileInQueue(files: File[], file: File) {
     const direction =
       file === fileInQueue
         ? 0
-        : file.lastTouchedTimestamp - fileInQueue.lastTouchedTimestamp ||
+        : // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+          file.lastTouchedTimestamp - fileInQueue.lastTouchedTimestamp ||
           // Fallback to lexigraphical comparison (if timestamps match)
-          // TODO: This solution requires that lexigraphical comparison is
-          // used on insert (queue method).
           (file.filename > fileInQueue.filename ? 1 : -1)
 
     if (direction > 0) {

@@ -1,7 +1,7 @@
 import { Disklet } from 'disklet'
 
-import { Memlet, File, MemletConfig, MemletState } from './types'
 import { makeFileQueue } from './file-queue'
+import { File, Memlet, MemletConfig, MemletState } from './types'
 
 export * from './types'
 
@@ -47,7 +47,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     data: any,
     size: number,
     notFoundError?: any
-  ) => {
+  ): void => {
     const filename = getCacheFilename(path)
 
     const file: File = {
@@ -73,34 +73,35 @@ export function makeMemlet(disklet: Disklet): Memlet {
     return state.store.files[filename]
   }
 
-  const deleteStoreFile = (filename: string) => {
+  const deleteStoreFile = (filename: string): File | undefined => {
     const file = getStoreFile(filename)
 
-    if (file) {
+    if (file != null) {
       adjustMemoryUsage(-file.size)
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete state.store.files[filename]
     }
 
     return file
   }
 
-  const adjustMemoryUsage = (bytes?: number) => {
-    if (bytes) {
+  const adjustMemoryUsage = (bytes?: number): void => {
+    if (bytes != null) {
       state.store.memoryUsage += bytes
     }
 
     // Remove files if memory usage exceeds maxMemoryUsage
     if (state.store.memoryUsage > state.config.maxMemoryUsage) {
       const fileEntry = state.fileQueue.dequeue()
-      if (fileEntry) {
+      if (fileEntry != null) {
         // Deleting file from store will invoke adjustMemoryUsage again
         deleteStoreFile(fileEntry.filename)
       }
     }
   }
 
-  const getCacheFilename = (path: string) => {
-    return memletInstanceId + ':' + path
+  const getCacheFilename = (path: string): string => {
+    return `${memletInstanceId}:${path}`
   }
 
   const memlet = {
@@ -113,7 +114,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
        */
       const file = deleteStoreFile(path)
 
-      if (file) {
+      if (file != null) {
         state.fileQueue.remove(file)
       }
 
@@ -131,7 +132,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
       const filename = getCacheFilename(path)
       const file = getStoreFile(filename)
 
-      if (file) {
+      if (file != null) {
         // Update file in store to update it's timestamp
         file.lastTouchedTimestamp = Date.now()
 
@@ -142,7 +143,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
         adjustMemoryUsage(0)
 
         // If file contains a caught error, throw it.
-        if (file.notFoundError) {
+        if (file.notFoundError != null) {
           throw file.notFoundError
         }
 
@@ -164,7 +165,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
            * accesses on subsequent getJson invocations.
            */
           if (
-            err?.message.match(notFoundErrorMessageRegex) ||
+            notFoundErrorMessageRegex.test(err?.message) ||
             err?.code === 'ENOENT'
           ) {
             addStoreFile(path, null, 0, err)
@@ -188,7 +189,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
       const filename = getCacheFilename(path)
       const file = getStoreFile(filename)
 
-      if (file) {
+      if (file != null) {
         const previousSize = file.size
 
         // Update all of file's fields
@@ -217,9 +218,9 @@ export function makeMemlet(disklet: Disklet): Memlet {
 }
 
 // Update's module's config
-export function setMemletConfig(config: Partial<MemletConfig>) {
+export function setMemletConfig(config: Partial<MemletConfig>): void {
   // Divide given maxMemoryUsage config parameter to respresent char-length
-  if (config.maxMemoryUsage) {
+  if (config.maxMemoryUsage != null) {
     config.maxMemoryUsage = config.maxMemoryUsage / 2
   }
 
@@ -228,14 +229,14 @@ export function setMemletConfig(config: Partial<MemletConfig>) {
 }
 
 // Clears the file cache fields in the module's state
-export function clearMemletCache() {
+export function clearMemletCache(): void {
   state.store.memoryUsage = 0
   state.store.files = {}
   state.fileQueue = makeFileQueue()
 }
 
 // Resets config and clears file cache
-export function resetMemletState() {
+export function resetMemletState(): void {
   state.config = { ...defaultConfig }
   clearMemletCache()
 }

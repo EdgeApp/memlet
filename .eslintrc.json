@@ -1,7 +1,6 @@
 {
   "extends": [
     "standard-kit/prettier",
-    "standard-kit/prettier/flow",
     "standard-kit/prettier/typescript"
   ],
   "parserOptions": {
@@ -13,6 +12,6 @@
   "rules": {
     "@typescript-eslint/promise-function-async": "off",
     "no-var": "error",
-    "simple-import-sort/sort": "error"
+    "simple-import-sort/imports": "error"
   }
 }
