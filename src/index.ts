@@ -40,71 +40,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
    */
   const memletInstanceId = countOfMemletInstances++
 
-  // Private methods
-
-  const addStoreFile = (
-    path: string,
-    data: any,
-    size: number,
-    notFoundError?: any
-  ): void => {
-    const filename = getCacheFilename(path)
-
-    const file: File = {
-      filename,
-      data,
-      size,
-      lastTouchedTimestamp: Date.now(),
-      notFoundError
-    }
-
-    // Add file to file queue
-    state.fileQueue.queue(file)
-
-    // Add file's size to memory usage
-    adjustMemoryUsage(file.size)
-
-    // Add file to the store files map
-    state.store.files[filename] = file
-  }
-
-  // Used to add undefined type checking to file retrieval
-  const getStoreFile = (filename: string): File | undefined => {
-    return state.store.files[filename]
-  }
-
-  const deleteStoreFile = (filename: string): File | undefined => {
-    const file = getStoreFile(filename)
-
-    if (file != null) {
-      adjustMemoryUsage(-file.size)
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      delete state.store.files[filename]
-    }
-
-    return file
-  }
-
-  const adjustMemoryUsage = (bytes?: number): void => {
-    if (bytes != null) {
-      state.store.memoryUsage += bytes
-    }
-
-    // Remove files if memory usage exceeds maxMemoryUsage
-    if (state.store.memoryUsage > state.config.maxMemoryUsage) {
-      const fileEntry = state.fileQueue.dequeue()
-      if (fileEntry != null) {
-        // Deleting file from store will invoke adjustMemoryUsage again
-        deleteStoreFile(fileEntry.filename)
-      }
-    }
-  }
-
-  const getCacheFilename = (path: string): string => {
-    return `${memletInstanceId}:${path}`
-  }
-
-  const memlet = {
+  const memlet: Memlet = {
     // Removes an object at a given path
     delete: async (path: string) => {
       /**
@@ -215,6 +151,70 @@ export function makeMemlet(disklet: Disklet): Memlet {
   }
 
   return memlet
+
+  // Private methods
+
+  function addStoreFile(
+    path: string,
+    data: any,
+    size: number,
+    notFoundError?: any
+  ): void {
+    const filename = getCacheFilename(path)
+
+    const file: File = {
+      filename,
+      data,
+      size,
+      lastTouchedTimestamp: Date.now(),
+      notFoundError
+    }
+
+    // Add file to file queue
+    state.fileQueue.queue(file)
+
+    // Add file's size to memory usage
+    adjustMemoryUsage(file.size)
+
+    // Add file to the store files map
+    state.store.files[filename] = file
+  }
+
+  // Used to add undefined type checking to file retrieval
+  function getStoreFile(filename: string): File | undefined {
+    return state.store.files[filename]
+  }
+
+  function deleteStoreFile(filename: string): File | undefined {
+    const file = getStoreFile(filename)
+
+    if (file != null) {
+      adjustMemoryUsage(-file.size)
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete state.store.files[filename]
+    }
+
+    return file
+  }
+
+  function adjustMemoryUsage(bytes?: number): void {
+    if (bytes != null) {
+      state.store.memoryUsage += bytes
+    }
+
+    // Remove files if memory usage exceeds maxMemoryUsage
+    if (state.store.memoryUsage > state.config.maxMemoryUsage) {
+      const fileEntry = state.fileQueue.dequeue()
+      if (fileEntry != null) {
+        // Deleting file from store will invoke adjustMemoryUsage again
+        deleteStoreFile(fileEntry.filename)
+      }
+    }
+  }
+
+  function getCacheFilename(path: string): string {
+    return `${memletInstanceId}:${path}`
+  }
 }
 
 // Update's module's config
