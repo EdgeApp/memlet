@@ -189,7 +189,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     }
 
     // Add file to file queue
-    state.fileQueue.queue(file)
+    state.fileQueue.enqueue(file)
 
     // Add file's size to memory usage
     adjustMemoryUsage(file.size)

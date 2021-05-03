@@ -11,9 +11,9 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     expect(fileQueue.list()).deep.equals([fileA, fileB, fileC])
   })
@@ -28,10 +28,10 @@ describe('FileQueue', () => {
       lastTouchedTimestamp: fileC.lastTouchedTimestamp + 1000
     }
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
-    fileQueue.queue(fileD)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
+    fileQueue.enqueue(fileD)
 
     expect(fileQueue.list()).deep.equals([fileA, fileB, fileC, fileD])
   })
@@ -46,10 +46,10 @@ describe('FileQueue', () => {
       lastTouchedTimestamp: fileC.lastTouchedTimestamp - 1
     }
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
-    fileQueue.queue(fileD)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
+    fileQueue.enqueue(fileD)
 
     expect(fileQueue.list()).deep.equals([fileA, fileB, fileD, fileC])
   })
@@ -64,10 +64,10 @@ describe('FileQueue', () => {
       lastTouchedTimestamp: fileC.lastTouchedTimestamp
     }
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
-    fileQueue.queue(fileD)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
+    fileQueue.enqueue(fileD)
 
     expect(fileQueue.list()).deep.equals([fileA, fileB, fileC, fileD])
   })
@@ -82,10 +82,10 @@ describe('FileQueue', () => {
       lastTouchedTimestamp: fileC.lastTouchedTimestamp - 1000
     }
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
-    fileQueue.queue(fileD)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
+    fileQueue.enqueue(fileD)
 
     expect(fileQueue.list()).deep.equals([fileD, fileA, fileB, fileC])
   })
@@ -95,9 +95,9 @@ describe('FileQueue', () => {
 
     const fileQueue = makeFileQueue()
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     expect(fileQueue.list()).deep.equals([fileA, fileB, fileC])
   })
@@ -107,9 +107,9 @@ describe('FileQueue', () => {
 
     const fileQueue = makeFileQueue()
 
-    fileQueue.queue(fileC)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileA)
+    fileQueue.enqueue(fileC)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileA)
 
     expect(fileQueue.list()).deep.equals([fileA, fileB, fileC])
   })
@@ -121,7 +121,7 @@ describe('FileQueue', () => {
 
     ;[fileA, fileB, fileC]
       .sort(() => Math.round(Math.random()))
-      .forEach(file => fileQueue.queue(file))
+      .forEach(file => fileQueue.enqueue(file))
 
     expect(fileQueue.list()).deep.equals([fileA, fileB, fileC])
   })
@@ -148,29 +148,29 @@ describe('FileQueue', () => {
 
     // Check with first of lexicographical order last
     fileQueue = makeFileQueue()
-    firstFiles.forEach(file => fileQueue.queue(file))
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
-    lastFiles.forEach(file => fileQueue.queue(file))
-    fileQueue.queue(fileA)
+    firstFiles.forEach(file => fileQueue.enqueue(file))
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
+    lastFiles.forEach(file => fileQueue.enqueue(file))
+    fileQueue.enqueue(fileA)
     assertion(fileQueue)
 
     // Check with middle of lexicographical order last
     fileQueue = makeFileQueue()
-    firstFiles.forEach(file => fileQueue.queue(file))
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileC)
-    lastFiles.forEach(file => fileQueue.queue(file))
-    fileQueue.queue(fileB)
+    firstFiles.forEach(file => fileQueue.enqueue(file))
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileC)
+    lastFiles.forEach(file => fileQueue.enqueue(file))
+    fileQueue.enqueue(fileB)
     assertion(fileQueue)
 
     // Check with last of lexicographical order last
     fileQueue = makeFileQueue()
-    firstFiles.forEach(file => fileQueue.queue(file))
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    lastFiles.forEach(file => fileQueue.queue(file))
-    fileQueue.queue(fileC)
+    firstFiles.forEach(file => fileQueue.enqueue(file))
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    lastFiles.forEach(file => fileQueue.enqueue(file))
+    fileQueue.enqueue(fileC)
     assertion(fileQueue)
   })
 
@@ -179,9 +179,9 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     const removedFile = fileQueue.dequeue()
 
@@ -194,9 +194,9 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     await delay(10)
     fileQueue.requeue(fileA)
@@ -209,9 +209,9 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     await delay(10)
     fileQueue.requeue(fileB)
@@ -224,9 +224,9 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 1)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     await delay(10)
     fileQueue.requeue(fileC)
@@ -239,9 +239,9 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     await delay(10)
     fileQueue.requeue(fileA)
@@ -253,9 +253,9 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     await delay(10)
     fileQueue.requeue(fileB)
@@ -267,9 +267,9 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC] = createFiles(['A', 'B', 'C'], 0)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
 
     await delay(10)
     fileQueue.requeue(fileC)
@@ -281,10 +281,10 @@ describe('FileQueue', () => {
 
     const [fileA, fileB, fileC, fileD] = createFiles(['A', 'B', 'C', 'D'], 1)
 
-    fileQueue.queue(fileA)
-    fileQueue.queue(fileB)
-    fileQueue.queue(fileC)
-    fileQueue.queue(fileD)
+    fileQueue.enqueue(fileA)
+    fileQueue.enqueue(fileB)
+    fileQueue.enqueue(fileC)
+    fileQueue.enqueue(fileD)
 
     fileQueue.remove(fileA)
 

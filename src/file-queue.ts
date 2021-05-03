@@ -10,7 +10,7 @@ export function makeFileQueue(): FileQueue {
      * on key.
      * @param file The file to insert into queue.
      */
-    queue: (file: File) => {
+    enqueue: (file: File) => {
       let endFileIndex = files.length - 1
 
       for (; endFileIndex >= 0; --endFileIndex) {
@@ -33,7 +33,7 @@ export function makeFileQueue(): FileQueue {
     requeue: (file: File) => {
       fileQueue.remove(file)
       file.lastTouchedTimestamp = Date.now()
-      fileQueue.queue(file)
+      fileQueue.enqueue(file)
     },
     remove: (file: File) => {
       const index = indexOfFileInQueue(files, file)
@@ -94,7 +94,7 @@ function indexOfFileInQueue(files: File[], file: File): number {
 }
 
 export interface FileQueue {
-  queue: (file: File) => void
+  enqueue: (file: File) => void
   dequeue: () => File | undefined
   requeue: (file: File) => void
   remove: (file: File) => void
