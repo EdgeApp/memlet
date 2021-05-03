@@ -1,6 +1,6 @@
 import { DiskletListing } from 'disklet'
 
-import { FileQueue } from './file-queue'
+import { FileQueue } from './fileQueue'
 
 export interface Memlet {
   list: (path?: string) => Promise<DiskletListing>

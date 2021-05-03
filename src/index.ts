@@ -1,6 +1,6 @@
 import { Disklet, DiskletListing } from 'disklet'
 
-import { makeFileQueue } from './file-queue'
+import { makeFileQueue } from './fileQueue'
 import { folderizePath, normalizePath } from './helpers/paths'
 import { File, Memlet, MemletConfig, MemletState } from './types'
 

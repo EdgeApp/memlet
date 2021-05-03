@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import { describe, it } from 'mocha'
 
 import { File } from '../src'
-import { FileQueue, makeFileQueue } from '../src/file-queue'
+import { FileQueue, makeFileQueue } from '../src/fileQueue'
 import { createFiles, delay } from './utils'
 
 describe('FileQueue', () => {
