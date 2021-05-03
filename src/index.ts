@@ -87,10 +87,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
       const file = getStoreFile(key)
 
       if (file != null) {
-        // Update file in store to update it's timestamp
-        file.lastTouchedTimestamp = Date.now()
-
-        // Update file's position in the file queue
+        // Update file's position in the file queue and lastTouchedTimestamp
         state.fileQueue.requeue(file)
 
         // Invoke adjustMemoryUsage to potentially evict files
@@ -147,7 +144,6 @@ export function makeMemlet(disklet: Disklet): Memlet {
         const previousSize = file.size
 
         // Update all of file's fields
-        file.lastTouchedTimestamp = Date.now()
         file.data = data
         file.size = JSON.stringify(data).length
 
