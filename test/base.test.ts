@@ -3,7 +3,8 @@ import { makeMemoryDisklet, makeNodeDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
 import { delay } from '../src/helpers/delay'
-import { _getMemletState, File, makeMemlet, Memlet } from '../src/index'
+import { _getMemletState, makeMemlet, Memlet } from '../src/index'
+import { QueueItem } from '../src/queue'
 
 interface DataObjMap {
   [fileName: string]: DataObj
@@ -81,11 +82,18 @@ describe('Memlet', () => {
   })
 
   it('will not leak memory in queues', async () => {
-    const { fileQueue } = _getMemletState()
+    const { fileQueue, actionQueue } = _getMemletState()
 
-    const hasNotDuplicates = (files: File[]): void => {
-      const set = new Set(files)
-      expect(set.size === files.length)
+    const hasNoDuplicates = (files: QueueItem[]): void => {
+      const keys = files.map(({ key }) => key)
+      const dedupedKeys = keys.filter(
+        (key, index, keys) => index === keys.indexOf(key)
+      )
+
+      expect(keys).to.deep.equal(
+        dedupedKeys,
+        'expected no duplicate keys in queues'
+      )
     }
 
     await memlet.setJson('leaky-file', 'no leak please')
@@ -103,19 +111,20 @@ describe('Memlet', () => {
     await memlet.setJson('other5-file', 'no leak please')
     await delay(1)
 
-    hasNotDuplicates(fileQueue.list())
+    await delay(200)
+
+    hasNoDuplicates([...fileQueue.list(), ...actionQueue.list()])
 
     await memlet.setJson('leaky-file', 'no leak please')
 
-    hasNotDuplicates(fileQueue.list())
+    hasNoDuplicates([...fileQueue.list(), ...actionQueue.list()])
 
     await memlet.setJson('leaky-file', 'no leak please')
 
-    hasNotDuplicates(fileQueue.list())
-
+    hasNoDuplicates([...fileQueue.list(), ...actionQueue.list()])
     await delay(101)
 
-    hasNotDuplicates(fileQueue.list())
+    hasNoDuplicates([...fileQueue.list(), ...actionQueue.list()])
   })
 
   it('memory usage is correct', async () => {

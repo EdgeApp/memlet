@@ -9,17 +9,21 @@ export interface Memlet {
 
   getJson: (path: string) => Promise<any>
   setJson: (path: string, obj: any) => Promise<void>
+
+  onFlush: Generator<Promise<void> | undefined>
 }
 
 export interface MemletState {
   config: MemletConfig
   store: MemletStore
   fileQueue: Queue<File>
+  actionQueue: Queue<Action>
 }
 
 export interface MemletStore {
   memoryUsage: number
   files: FileMap
+  actions: { [key: string]: Action }
 }
 
 export interface MemletConfig {
@@ -36,3 +40,10 @@ export interface File {
   data: any
   notFoundError?: any
 }
+
+export interface Action {
+  key: string
+  actionType: ActionType
+  file: File
+}
+export type ActionType = 'write' | 'delete'
