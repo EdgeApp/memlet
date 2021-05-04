@@ -27,3 +27,7 @@ export function normalizePath(path: string): string {
 export function folderizePath(path: string): string {
   return path === '' ? path : path + '/'
 }
+
+export function fileKeyToPath(key: string): string {
+  return key.split(':').slice(1).join(':')
+}

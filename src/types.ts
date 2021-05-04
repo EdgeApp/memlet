@@ -14,7 +14,8 @@ export interface Memlet {
 export interface MemletState {
   config: MemletConfig
   store: MemletStore
-  fileQueue: Queue<File>
+  writtenFileQueue: Queue<File>
+  memoryOnlyFileQueue: Queue<File>
 }
 
 export interface MemletStore {
