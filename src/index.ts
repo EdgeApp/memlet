@@ -239,15 +239,16 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
     // Remove files if memory usage exceeds maxMemoryUsage
     if (state.store.memoryUsage > state.config.maxMemoryUsage) {
+      // Remove file from persistence queue
       const file = state.writtenFileQueue.dequeue()
-
       if (file != null) {
         await deleteStoreFile(file.key)
         return
       }
 
+      // If persistence queue empty, remove file from memory queue after
+      // persisting the file.
       const memoryOnlyFile = state.memoryOnlyFileQueue.dequeue()
-
       if (memoryOnlyFile != null) {
         await persistFile(memoryOnlyFile)
         await deleteStoreFile(memoryOnlyFile.key)
