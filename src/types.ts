@@ -14,13 +14,14 @@ export interface Memlet {
 export interface MemletState {
   config: MemletConfig
   store: MemletStore
-  writtenFileQueue: Queue<File>
-  memoryOnlyFileQueue: Queue<File>
+  fileQueue: Queue<File>
+  actionQueue: Queue<Action>
 }
 
 export interface MemletStore {
   memoryUsage: number
   files: FileMap
+  actions: { [key: string]: Action }
 }
 
 export interface MemletConfig {
@@ -37,3 +38,10 @@ export interface File {
   data: any
   notFoundError?: any
 }
+
+export interface Action {
+  key: string
+  file: File
+  actionType: ActionType
+}
+export type ActionType = 'write' | 'delete'
