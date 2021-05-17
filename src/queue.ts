@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-dynamic-delete */
+
 export function makeQueue<T extends QueueItem>(): Queue<T> {
   const items: T[] = []
-  const timestampMap: WeakMap<T, number> = new WeakMap()
+  const timestampMap: { [key: string]: number } = {}
 
   const queue: Queue<T> = {
     /**
@@ -11,13 +13,13 @@ export function makeQueue<T extends QueueItem>(): Queue<T> {
      * @param timestamp An optional timestamp to set for the item. Defaults to Date.now()
      */
     enqueue: (newItem: T, timestamp: number = Date.now()) => {
-      const newItemTimestamp = timestampMap.get(newItem) ?? timestamp
+      const newItemTimestamp = timestampMap[newItem.key] ?? timestamp
 
       // Find the place to insert new item
       let endItemIndex = items.length - 1
       while (endItemIndex >= 0) {
         const endItem = items[endItemIndex]
-        const endItemTimestamp = timestampMap.get(endItem)
+        const endItemTimestamp = timestampMap[endItem.key]
 
         // Assert that endItem must have a timestamp
         if (endItemTimestamp == null)
@@ -37,18 +39,18 @@ export function makeQueue<T extends QueueItem>(): Queue<T> {
 
       // Save item
       items.splice(endItemIndex + 1, 0, newItem)
-      timestampMap.set(newItem, newItemTimestamp)
+      timestampMap[newItem.key] = newItemTimestamp
     },
     dequeue: () => {
       const item = items.shift()
       if (item != null) {
-        timestampMap.delete(item)
+        delete timestampMap[item.key]
       }
       return item
     },
     requeue: (item: T, timestamp: number = Date.now()) => {
       queue.remove(item)
-      timestampMap.set(item, timestamp)
+      timestampMap[item.key] = timestamp
       queue.enqueue(item)
     },
     remove: (item: T) => {
@@ -56,7 +58,7 @@ export function makeQueue<T extends QueueItem>(): Queue<T> {
 
       if (index >= 0) {
         const [item] = items.splice(index, 1)
-        timestampMap.delete(item)
+        delete timestampMap[item.key]
       }
     },
     list: () => {
@@ -72,7 +74,7 @@ export function makeQueue<T extends QueueItem>(): Queue<T> {
    * @param needleItem The item object for which to search.
    */
   function indexOfItemInQueue(needleItem: T): number {
-    const needleItemTimestamp = timestampMap.get(needleItem)
+    const needleItemTimestamp = timestampMap[needleItem.key]
     let l = 0
     let r = items.length - 1
 
@@ -85,7 +87,7 @@ export function makeQueue<T extends QueueItem>(): Queue<T> {
 
       // Item in queue to compare
       const haystackItem = items[index]
-      const haystackItemTimestamp = timestampMap.get(haystackItem)
+      const haystackItemTimestamp = timestampMap[haystackItem.key]
 
       // Assert timestamp must exist for items in queue
       if (haystackItemTimestamp == null)
@@ -94,14 +96,16 @@ export function makeQueue<T extends QueueItem>(): Queue<T> {
       // Direction to continue binary search. Zero is a match.
       // Negative is to search lower and positive is to search higher.
       const direction =
-        needleItem === haystackItem
-          ? 0
-          : needleItemTimestamp - haystackItemTimestamp !== 0
-          ? needleItemTimestamp - haystackItemTimestamp
-          : // Fallback to lexigraphical comparison (if timestamps match)
-          needleItem.key > haystackItem.key
-          ? 1
-          : -1
+        needleItemTimestamp - haystackItemTimestamp === 0
+          ? needleItem.key === haystackItem.key
+            ? // Found
+              0
+            : // Lexicographical order on key
+            needleItem.key > haystackItem.key
+            ? 1
+            : -1
+          : // Chronological order on timestamp
+            needleItemTimestamp - haystackItemTimestamp
 
       if (direction > 0) {
         // To search higher, increase left
