@@ -6,14 +6,11 @@ export const delay = (ms: number): Promise<void> => {
   })
 }
 
-export const createFiles = (keys: string[], delay: number): File[] => {
-  const timestamp = Date.now()
-
-  return keys.map((key, index) => ({
+export const createFiles = (keys: string[]): File[] => {
+  return keys.map(key => ({
     key,
     data: 'content',
-    size: 123,
-    lastTouchedTimestamp: timestamp + index * delay
+    size: 123
   }))
 }
 

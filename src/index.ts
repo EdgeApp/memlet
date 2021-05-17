@@ -87,7 +87,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
       const file = getStoreFile(key)
 
       if (file != null) {
-        // Update file's position in the file queue and lastTouchedTimestamp
+        // Update file's position in the file queue
         state.fileQueue.requeue(file)
 
         // Invoke adjustMemoryUsage to potentially evict files
@@ -180,7 +180,6 @@ export function makeMemlet(disklet: Disklet): Memlet {
       key,
       data,
       size,
-      lastTouchedTimestamp: Date.now(),
       notFoundError
     }
 

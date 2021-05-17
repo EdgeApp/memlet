@@ -34,6 +34,5 @@ export interface File {
   key: string
   size: number
   data: any
-  lastTouchedTimestamp: number
   notFoundError?: any
 }
