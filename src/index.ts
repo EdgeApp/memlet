@@ -34,6 +34,11 @@ const DRAIN_INTERVAL = 100
 let countOfMemletInstances = 0
 
 /**
+ * Keeps track of the batch routine to persist in-memory state to disklet.
+ */
+let drainTimeoutId: NodeJS.Timeout | null = null
+
+/**
  * Regex to match error message for files not found errors.
  * First, variation is from memory and localStorage memlet backends.
  * Second variation is from iOS memlet backend.
@@ -283,7 +288,12 @@ export function makeMemlet(disklet: Disklet): Memlet {
    * there are no more memory-only files.
    */
   function drainMemoryOnlyFiles(): void {
-    setTimeout(() => {
+    // If timeout is already running then do nothing
+    if (drainTimeoutId !== null) return
+
+    drainTimeoutId = setTimeout(() => {
+      drainTimeoutId = null
+
       persistMemoryOnlyFiles()
         .then(() => {
           if (state.memoryOnlyFileQueue.list().length > 0) {
