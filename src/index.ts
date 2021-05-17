@@ -1,7 +1,7 @@
 import { Disklet, DiskletListing } from 'disklet'
 
-import { makeFileQueue } from './fileQueue'
 import { folderizePath, normalizePath } from './helpers/paths'
+import { makeQueue } from './queue'
 import { File, Memlet, MemletConfig, MemletState } from './types'
 
 export * from './types'
@@ -16,7 +16,7 @@ const state: MemletState = {
     memoryUsage: 0,
     files: {}
   },
-  fileQueue: makeFileQueue()
+  fileQueue: makeQueue()
 }
 
 /**
@@ -246,7 +246,7 @@ export function setMemletConfig(config: Partial<MemletConfig>): void {
 export function clearMemletCache(): void {
   state.store.memoryUsage = 0
   state.store.files = {}
-  state.fileQueue = makeFileQueue()
+  state.fileQueue = makeQueue()
 }
 
 // Resets config and clears file cache
