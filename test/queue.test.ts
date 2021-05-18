@@ -2,8 +2,9 @@ import { expect } from 'chai'
 import { describe, it } from 'mocha'
 
 import { File } from '../src'
+import { delay } from '../src/helpers/delay'
 import { makeQueue, Queue } from '../src/queue'
-import { createFiles, delay } from './utils'
+import { createFiles } from './utils'
 
 describe('Queue', () => {
   it('can queue files in order', async () => {

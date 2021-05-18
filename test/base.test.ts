@@ -2,8 +2,8 @@ import { assert, expect } from 'chai'
 import { makeMemoryDisklet, makeNodeDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
+import { delay } from '../src/helpers/delay'
 import { _getMemletState, File, makeMemlet, Memlet } from '../src/index'
-import { delay } from './utils'
 
 interface DataObjMap {
   [fileName: string]: DataObj

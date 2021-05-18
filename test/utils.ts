@@ -1,11 +1,5 @@
 import { File, MemletState } from '../src'
 
-export const delay = (ms: number): Promise<void> => {
-  return new Promise(resolve => {
-    setTimeout(resolve, ms)
-  })
-}
-
 export const createFiles = (keys: string[]): File[] => {
   return keys.map(key => ({
     key,

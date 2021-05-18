@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import { makeMemoryDisklet } from 'disklet'
 import { beforeEach, describe, it } from 'mocha'
 
+import { delay } from '../src/helpers/delay'
 import {
   _getMemletState,
   makeMemlet,
@@ -9,7 +10,6 @@ import {
   setMemletConfig
 } from '../src/index'
 import {
-  delay,
   getNormalizeStoreFilenames,
   measureDataSize,
   measureMaxMemoryUsage
