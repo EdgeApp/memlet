@@ -56,6 +56,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
    */
   const memletInstanceId = countOfMemletInstances++
 
+  let _nextFlushEvent: Promise<void> | undefined
+
   // ---------------------------------------------------------------------
   // Memlet Public Interface
   // ---------------------------------------------------------------------
@@ -182,8 +184,14 @@ export function makeMemlet(disklet: Disklet): Memlet {
       }
 
       // Schedule to flush action queue
-      memlet._nextFlushEvent = startFlushing()
-    }
+      _nextFlushEvent = startFlushing()
+    },
+
+    onFlush: (function* flushEventGenerator() {
+      while (true) {
+        yield _nextFlushEvent
+      }
+    })()
   }
   return memlet
 
@@ -296,8 +304,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
    */
   function startFlushing(): Promise<void> {
     // If timeout is already running then do nothing
-    if (memlet._nextFlushEvent != null) {
-      return memlet._nextFlushEvent
+    if (_nextFlushEvent != null) {
+      return _nextFlushEvent
     }
 
     return new Promise((resolve, reject) => {
@@ -309,12 +317,12 @@ export function makeMemlet(disklet: Disklet): Memlet {
           }
 
           resolve()
-          memlet._nextFlushEvent = undefined
+          _nextFlushEvent = undefined
         })
         .catch(err => {
           // Uh oh spaghettios
           reject(err)
-          memlet._nextFlushEvent = undefined
+          _nextFlushEvent = undefined
         })
     })
   }

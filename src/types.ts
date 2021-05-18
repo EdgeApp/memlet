@@ -14,6 +14,8 @@ export interface Memlet {
    * This is a private async event used for testing purposes only.
    */
   _nextFlushEvent?: Promise<void>
+
+  onFlush: Generator<Promise<void> | undefined>
 }
 
 export interface MemletState {

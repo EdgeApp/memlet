@@ -41,7 +41,10 @@ describe('Memlets with shared state', () => {
     await delay(10)
     await memletB.setJson('File-B', fileB)
 
-    await Promise.all([memletA._nextFlushEvent, memletB._nextFlushEvent])
+    await Promise.all([
+      memletA.onFlush.next().value,
+      memletB.onFlush.next().value
+    ])
 
     // Check memoryUsage
     expect(measureMaxMemoryUsage(state.store.memoryUsage)).to.equal(fileBSize)
