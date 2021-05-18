@@ -1,5 +1,6 @@
 import { Disklet, DiskletListing } from 'disklet'
 
+import { delay } from './helpers/delay'
 import { fileKeyToPath, folderizePath, normalizePath } from './helpers/paths'
 import { makeQueue } from './Queue'
 import {
@@ -40,11 +41,6 @@ const DRAIN_INTERVAL = 100
  * a unique ID for each instance.
  */
 let countOfMemletInstances = 0
-
-/**
- * Keeps track of the batch routine to persist in-memory state to disklet.
- */
-let drainTimeoutId: NodeJS.Timeout | null = null
 
 /**
  * Regex to match error message for files not found errors.
@@ -185,8 +181,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
         await addStoreFile(path, data, dataString.length)
       }
 
-      // Start drain scheduler
-      drainMemoryOnlyFiles()
+      // Schedule to flush action queue
+      memlet._nextFlushEvent = startFlushing()
     }
   }
   return memlet
@@ -249,17 +245,6 @@ export function makeMemlet(disklet: Disklet): Memlet {
       const file = state.fileQueue.dequeue()
       if (file != null) {
         await deleteStoreFile(file.key)
-        return
-      }
-
-      // If persistence queue is empty, remove file from action queue,
-      // persist the file, and then delete file from store.
-      const action = state.actionQueue.dequeue()
-      if (action != null) {
-        await completeAction(action)
-        await deleteStoreFile(action.key)
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-        delete state.store.actions[action.key]
       }
     }
   }
@@ -286,7 +271,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     }
   }
 
-  async function persistMemoryOnlyFiles(): Promise<void> {
+  async function flushActions(): Promise<void> {
     for (let i = 0; i < MAX_BATCH_SIZE; ++i) {
       // Pull out any memory-only files
       const action = state.actionQueue.dequeue()
@@ -300,6 +285,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
       // Move file to written file queue
       state.fileQueue.requeue(action.file)
     }
+    // Add file's size to memory usage
+    await adjustMemoryUsage(0)
   }
 
   /**
@@ -307,24 +294,29 @@ export function makeMemlet(disklet: Disklet): Memlet {
    * This is run continually at a constant interval once invoked until
    * there are no more memory-only files.
    */
-  function drainMemoryOnlyFiles(): void {
+  function startFlushing(): Promise<void> {
     // If timeout is already running then do nothing
-    if (drainTimeoutId !== null) return
+    if (memlet._nextFlushEvent != null) {
+      return memlet._nextFlushEvent
+    }
 
-    drainTimeoutId = setTimeout(() => {
-      drainTimeoutId = null
-
-      persistMemoryOnlyFiles()
+    return new Promise((resolve, reject) => {
+      delay(DRAIN_INTERVAL)
+        .then(flushActions)
         .then(() => {
           if (state.actionQueue.list().length > 0) {
-            drainMemoryOnlyFiles()
+            return startFlushing()
           }
+
+          resolve()
+          memlet._nextFlushEvent = undefined
         })
         .catch(err => {
           // Uh oh spaghettios
-          throw err
+          reject(err)
+          memlet._nextFlushEvent = undefined
         })
-    }, DRAIN_INTERVAL)
+    })
   }
 }
 

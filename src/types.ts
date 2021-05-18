@@ -9,6 +9,11 @@ export interface Memlet {
 
   getJson: (path: string) => Promise<any>
   setJson: (path: string, obj: any) => Promise<void>
+
+  /**
+   * This is a private async event used for testing purposes only.
+   */
+  _nextFlushEvent?: Promise<void>
 }
 
 export interface MemletState {
@@ -41,7 +46,7 @@ export interface File {
 
 export interface Action {
   key: string
-  file: File
   actionType: ActionType
+  file: File
 }
 export type ActionType = 'write' | 'delete'
