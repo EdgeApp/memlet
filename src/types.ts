@@ -10,11 +10,6 @@ export interface Memlet {
   getJson: (path: string) => Promise<any>
   setJson: (path: string, obj: any) => Promise<void>
 
-  /**
-   * This is a private async event used for testing purposes only.
-   */
-  _nextFlushEvent?: Promise<void>
-
   onFlush: Generator<Promise<void> | undefined>
 }
 
