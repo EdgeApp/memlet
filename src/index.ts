@@ -304,9 +304,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
    */
   function startFlushing(): Promise<void> {
     // If timeout is already running then do nothing
-    if (nextFlushEvent != null) {
-      return nextFlushEvent
-    }
+    if (nextFlushEvent != null) return nextFlushEvent
 
     return new Promise((resolve, reject) => {
       delay(DRAIN_INTERVAL)
