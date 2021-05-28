@@ -2,25 +2,38 @@ import { assert, expect } from 'chai'
 import { makeMemoryDisklet, makeNodeDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
-import { makeMemlet, Memlet, _getMemletState } from '../src/index'
+import { delay } from '../src/helpers/delay'
+import { _getMemletState, makeMemlet, Memlet } from '../src/index'
+import { QueueItem } from '../src/queue'
 
-export async function createObjects(memlet: Memlet) {
+interface DataObjMap {
+  [fileName: string]: DataObj
+}
+interface DataObj {
+  content: string
+}
+
+export async function createObjects(memlet: Memlet): Promise<DataObjMap> {
   const fileA = { content: 'file content' }
   const folderA = { content: 'folder content' }
   const fileB = { content: 'subfolder content' }
 
-  memlet.setJson('File-A', fileA)
-  memlet.setJson('Folder-A', folderA)
-  memlet.setJson('Folder-A/File-B', fileB)
+  await memlet.setJson('File-A', fileA)
+  await memlet.setJson('Folder-A', folderA)
+  await memlet.setJson('Folder-A/File-B', fileB)
 
   return { fileA, folderA, fileB }
 }
 
-describe('Memlet', async () => {
+describe('Memlet', () => {
   const disklet = makeMemoryDisklet()
   const memlet = makeMemlet(disklet)
 
-  const { fileA, folderA, fileB } = await createObjects(memlet)
+  let data: DataObjMap
+
+  before(async () => {
+    data = await createObjects(memlet)
+  })
 
   it('can list root files', async () => {
     const expected = {
@@ -57,15 +70,61 @@ describe('Memlet', async () => {
   })
 
   it('can retrieve file', async () => {
-    expect(await memlet.getJson('File-A')).deep.equals(fileA)
+    expect(await memlet.getJson('File-A')).deep.equals(data.fileA)
   })
 
   it('can retrieve folder', async () => {
-    expect(await memlet.getJson('Folder-A')).deep.equals(folderA)
+    expect(await memlet.getJson('Folder-A')).deep.equals(data.folderA)
   })
 
   it('can retrieve file in folder', async () => {
-    expect(await memlet.getJson('Folder-A/File-B')).deep.equals(fileB)
+    expect(await memlet.getJson('Folder-A/File-B')).deep.equals(data.fileB)
+  })
+
+  it('will not leak memory in queues', async () => {
+    const { fileQueue, actionQueue } = _getMemletState()
+
+    const hasNoDuplicates = (files: QueueItem[]): void => {
+      const keys = files.map(({ key }) => key)
+      const dedupedKeys = keys.filter(
+        (key, index, keys) => index === keys.indexOf(key)
+      )
+
+      expect(keys).to.deep.equal(
+        dedupedKeys,
+        'expected no duplicate keys in queues'
+      )
+    }
+
+    await memlet.setJson('leaky-file', 'no leak please')
+    await delay(1)
+    await memlet.setJson('other0-file', 'no leak please')
+    await delay(1)
+    await memlet.setJson('other1-file', 'no leak please')
+    await delay(1)
+    await memlet.setJson('other2-file', 'no leak please')
+    await delay(1)
+    await memlet.setJson('other3-file', 'no leak please')
+    await delay(1)
+    await memlet.setJson('other4-file', 'no leak please')
+    await delay(1)
+    await memlet.setJson('other5-file', 'no leak please')
+    await delay(1)
+
+    await delay(200)
+
+    hasNoDuplicates([...fileQueue.list(), ...actionQueue.list()])
+
+    await memlet.setJson('leaky-file', 'no leak please')
+
+    hasNoDuplicates([...fileQueue.list(), ...actionQueue.list()])
+
+    await memlet.setJson('leaky-file', 'no leak please')
+
+    hasNoDuplicates([...fileQueue.list(), ...actionQueue.list()])
+    await delay(101)
+
+    hasNoDuplicates([...fileQueue.list(), ...actionQueue.list()])
   })
 
   it('memory usage is correct', async () => {

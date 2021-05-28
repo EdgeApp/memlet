@@ -1,23 +1,21 @@
 import { expect } from 'chai'
 import { makeMemoryDisklet } from 'disklet'
-import { describe, it } from 'mocha'
+import { beforeEach, describe, it } from 'mocha'
 
+import { delay } from '../src/helpers/delay'
 import {
+  _getMemletState,
   makeMemlet,
   resetMemletState,
-  setMemletConfig,
-  _getMemletState
+  setMemletConfig
 } from '../src/index'
 import {
-  delay,
   getNormalizeStoreFilenames,
   measureDataSize,
   measureMaxMemoryUsage
 } from './utils'
 
-import { beforeEach } from 'mocha'
-
-describe('Memlet with evictions', async () => {
+describe('Memlet with evictions', () => {
   beforeEach('reset memlet state', () => {
     resetMemletState()
   })
@@ -35,6 +33,7 @@ describe('Memlet with evictions', async () => {
 
     await memlet.setJson('File-A', fileA)
 
+    await memlet.onFlush.next().value
     // Check files
     expect(getNormalizeStoreFilenames(state)).deep.equals(['File-A'])
     // Check memoryUsage
@@ -55,6 +54,7 @@ describe('Memlet with evictions', async () => {
     await delay(10)
     await memlet.setJson('File-B', fileB)
 
+    await memlet.onFlush.next().value
     // Check files
     expect(getNormalizeStoreFilenames(state)).deep.equals(['File-B'])
     // Check memoryUsage
@@ -93,6 +93,7 @@ describe('Memlet with evictions', async () => {
     await delay(1)
     await memlet.setJson('Large-File', largeFile)
 
+    await memlet.onFlush.next().value
     expect(getNormalizeStoreFilenames(state)).deep.equals([
       'File-D',
       'File-E',
@@ -117,11 +118,13 @@ describe('Memlet with evictions', async () => {
 
     await memlet.setJson('File-B', fileB)
 
+    await memlet.onFlush.next().value
     expect(getNormalizeStoreFilenames(state)).deep.equals(['File-B'])
 
     await delay(1)
     await memlet.getJson('File-A')
 
+    await memlet.onFlush.next().value
     expect(getNormalizeStoreFilenames(state)).deep.equals(['File-A'])
   })
 
@@ -161,6 +164,7 @@ describe('Memlet with evictions', async () => {
     await delay(1)
     await memlet.getJson('Large-File')
 
+    await memlet.onFlush.next().value
     expect(getNormalizeStoreFilenames(state)).deep.equals([
       'File-D',
       'File-E',
@@ -189,6 +193,9 @@ describe('Memlet with evictions', async () => {
 
     await memlet.setJson('File-E', fileData)
 
+    await memlet.onFlush.next().value
+
+    await memlet.onFlush.next().value
     expect(getNormalizeStoreFilenames(state)).deep.equals([
       'File-C',
       'File-D',
@@ -201,6 +208,7 @@ describe('Memlet with evictions', async () => {
 
     await memlet.getJson('File-A')
 
+    await memlet.onFlush.next().value
     expect(getNormalizeStoreFilenames(state)).deep.equals([
       'File-E',
       'File-B',
@@ -211,6 +219,7 @@ describe('Memlet with evictions', async () => {
 
     await memlet.setJson('File-F', fileData)
 
+    await memlet.onFlush.next().value
     expect(getNormalizeStoreFilenames(state)).deep.equals([
       'File-B',
       'File-A',
@@ -223,6 +232,7 @@ describe('Memlet with evictions', async () => {
     await memlet.getJson('File-D')
     await memlet.getJson('File-E')
 
+    await memlet.onFlush.next().value
     expect(getNormalizeStoreFilenames(state)).deep.equals([
       'File-C',
       'File-D',

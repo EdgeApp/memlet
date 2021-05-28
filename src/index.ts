@@ -1,7 +1,16 @@
-import { Disklet } from 'disklet'
+import { Disklet, DiskletListing } from 'disklet'
 
-import { Memlet, File, MemletConfig, MemletState } from './types'
-import { makeFileQueue } from './file-queue'
+import { delay } from './helpers/delay'
+import { fileKeyToPath, folderizePath, normalizePath } from './helpers/paths'
+import { makeQueue } from './Queue'
+import {
+  Action,
+  ActionType,
+  File,
+  Memlet,
+  MemletConfig,
+  MemletState
+} from './types'
 
 export * from './types'
 
@@ -13,13 +22,22 @@ const state: MemletState = {
   config: { ...defaultConfig },
   store: {
     memoryUsage: 0,
-    files: {}
+    files: {},
+    actions: {}
   },
-  fileQueue: makeFileQueue()
+  fileQueue: makeQueue(),
+  actionQueue: makeQueue()
 }
 
 /**
- * This is to keep a running count of instaniated memlets in order to determine
+ * This is the number of files to persist to disk at every interval of saving
+ * in-memory file data to disk.
+ */
+const MAX_BATCH_SIZE = 100
+const DRAIN_INTERVAL = 100
+
+/**
+ * This is to keep a running count of memlet instances in order to determine
  * a unique ID for each instance.
  */
 let countOfMemletInstances = 0
@@ -32,78 +50,19 @@ let countOfMemletInstances = 0
 const notFoundErrorMessageRegex = /^Cannot load ".+"$|^Cannot read '.+'$/
 
 export function makeMemlet(disklet: Disklet): Memlet {
-  // Private properties
-
   /**
    * A unique ID for the memlet instance. The ID is used as a prefix for each
-   * file's key or filename in the shared file cache.
+   * file's key in the shared file cache.
    */
   const memletInstanceId = countOfMemletInstances++
 
-  // Private methods
+  let nextFlushEvent: Promise<void> | undefined
 
-  const addStoreFile = (
-    path: string,
-    data: any,
-    size: number,
-    notFoundError?: any
-  ) => {
-    const filename = getCacheFilename(path)
+  // ---------------------------------------------------------------------
+  // Memlet Public Interface
+  // ---------------------------------------------------------------------
 
-    const file: File = {
-      filename,
-      data,
-      size,
-      lastTouchedTimestamp: Date.now(),
-      notFoundError
-    }
-
-    // Add file to file queue
-    state.fileQueue.queue(file)
-
-    // Add file's size to memory usage
-    adjustMemoryUsage(file.size)
-
-    // Add file to the store files map
-    state.store.files[filename] = file
-  }
-
-  // Used to add undefined type checking to file retrieval
-  const getStoreFile = (filename: string): File | undefined => {
-    return state.store.files[filename]
-  }
-
-  const deleteStoreFile = (filename: string) => {
-    const file = getStoreFile(filename)
-
-    if (file) {
-      adjustMemoryUsage(-file.size)
-      delete state.store.files[filename]
-    }
-
-    return file
-  }
-
-  const adjustMemoryUsage = (bytes?: number) => {
-    if (bytes) {
-      state.store.memoryUsage += bytes
-    }
-
-    // Remove files if memory usage exceeds maxMemoryUsage
-    if (state.store.memoryUsage > state.config.maxMemoryUsage) {
-      const fileEntry = state.fileQueue.dequeue()
-      if (fileEntry) {
-        // Deleting file from store will invoke adjustMemoryUsage again
-        deleteStoreFile(fileEntry.filename)
-      }
-    }
-  }
-
-  const getCacheFilename = (path: string) => {
-    return memletInstanceId + ':' + path
-  }
-
-  const memlet = {
+  const memlet: Memlet = {
     // Removes an object at a given path
     delete: async (path: string) => {
       /**
@@ -111,38 +70,51 @@ export function makeMemlet(disklet: Disklet): Memlet {
        * (because disklet delete might succeed in delete, but fail on
        * something else).
        */
-      const file = deleteStoreFile(path)
+      const file = await deleteStoreFile(path)
 
-      if (file) {
+      if (file != null) {
         state.fileQueue.remove(file)
+        state.actionQueue.requeue(makeAction(file, 'delete'))
       }
-
-      await disklet.delete(path)
     },
 
     // Lists objects from a given path
-    list: async (path?: string) => {
-      // Direct pass-through to disklet
-      return await disklet.list(path)
+    list: async (path: string = '') => {
+      const filepath = normalizePath(path)
+      const key = getCacheKey(filepath)
+      const out: DiskletListing = {}
+
+      // Try the path as a file:
+      if (state.store.files[key] != null) out[filepath] = 'file'
+
+      // Try the path as a folder:
+      const folderKey = getCacheKey(folderizePath(filepath))
+      for (const key of Object.keys(state.store.files)) {
+        if (key.indexOf(folderKey) !== 0) continue
+
+        const pathOfKey = key.split(':')[1]
+        const slashIndex = pathOfKey.indexOf('/', folderKey.length)
+        if (slashIndex < 0) out[pathOfKey] = 'file'
+        else out[pathOfKey.slice(0, slashIndex)] = 'folder'
+      }
+
+      return out
     },
 
     // Get an object at given path
     getJson: async (path: string) => {
-      const filename = getCacheFilename(path)
-      const file = getStoreFile(filename)
+      const key = getCacheKey(path)
+      const file = getStoreFile(key)
 
-      if (file) {
-        // Update file in store to update it's timestamp
-        file.lastTouchedTimestamp = Date.now()
-
-        // Update file's position in the file queue
+      if (file != null) {
+        // Update position in the file queue
         state.fileQueue.requeue(file)
 
         // Invoke adjustMemoryUsage to potentially evict files
-        adjustMemoryUsage(0)
+        await adjustMemoryUsage(0)
 
         // If file contains a caught error, throw it.
-        if (file.notFoundError) {
+        if (file.notFoundError != null) {
           throw file.notFoundError
         }
 
@@ -154,7 +126,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
           const dataString = await disklet.getText(path)
           const data = JSON.parse(dataString)
 
-          addStoreFile(path, data, dataString.length)
+          await addStoreFile(path, data, dataString.length)
 
           return data
         } catch (err) {
@@ -164,10 +136,10 @@ export function makeMemlet(disklet: Disklet): Memlet {
            * accesses on subsequent getJson invocations.
            */
           if (
-            err?.message.match(notFoundErrorMessageRegex) ||
+            notFoundErrorMessageRegex.test(err?.message) ||
             err?.code === 'ENOENT'
           ) {
-            addStoreFile(path, null, 0, err)
+            await addStoreFile(path, null, 0, err)
           }
 
           // Re-throw the error from disklet
@@ -179,47 +151,185 @@ export function makeMemlet(disklet: Disklet): Memlet {
     // Set an object at a given path
     setJson: async (path: string, data: any) => {
       /**
-       * Write-through policy: write to disklet first then put it in the cache.
+       * Write-through policy: write to memory cache first, then let the data be
+       * drained to disklet later.
        */
+      const key = getCacheKey(path)
+      const file = getStoreFile(key)
       const dataString = JSON.stringify(data)
 
-      await disklet.setText(path, dataString)
-
-      const filename = getCacheFilename(path)
-      const file = getStoreFile(filename)
-
-      if (file) {
+      if (file != null) {
         const previousSize = file.size
 
         // Update all of file's fields
-        file.lastTouchedTimestamp = Date.now()
         file.data = data
-        file.size = JSON.stringify(data).length
+        file.size = dataString.length
 
         // Remove error object if present
         delete file.notFoundError
 
-        // Update file's position in the file queue
-        state.fileQueue.requeue(file)
+        // Remove file from file queue because it has been updated
+        state.fileQueue.remove(file)
+
+        // Update position in the action queue
+        state.actionQueue.requeue(makeAction(file, 'write'))
 
         // Calculate the difference in memory usage if there is an existing file
         const sizeDiff = file.size - previousSize
 
         // Update memory usage with size difference
-        adjustMemoryUsage(sizeDiff)
+        await adjustMemoryUsage(sizeDiff)
       } else {
-        addStoreFile(path, data, dataString.length)
+        await addStoreFile(path, data, dataString.length)
+      }
+
+      // Schedule to flush action queue
+      nextFlushEvent = startFlushing()
+    },
+
+    onFlush: (function* flushEventGenerator() {
+      while (true) {
+        yield nextFlushEvent
+      }
+    })()
+  }
+  return memlet
+
+  // ---------------------------------------------------------------------
+  // Private Functions
+  // ---------------------------------------------------------------------
+
+  async function addStoreFile(
+    path: string,
+    data: any,
+    size: number,
+    notFoundError?: any
+  ): Promise<void> {
+    const key = getCacheKey(path)
+
+    const file: File = {
+      key,
+      data,
+      size,
+      notFoundError
+    }
+
+    // Add file to file queue
+    state.actionQueue.requeue(makeAction(file, 'write'))
+
+    // Add file to the store files map
+    state.store.files[key] = file
+
+    // Add file's size to memory usage
+    await adjustMemoryUsage(file.size)
+  }
+
+  // Used to add undefined type checking to file retrieval
+  function getStoreFile(key: string): File | undefined {
+    return state.store.files[key]
+  }
+
+  async function deleteStoreFile(key: string): Promise<File | undefined> {
+    const file = getStoreFile(key)
+
+    if (file != null) {
+      // Deleting file from store should invoke adjustMemoryUsage again
+      await adjustMemoryUsage(-file.size)
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete state.store.files[key]
+    }
+
+    return file
+  }
+
+  async function adjustMemoryUsage(bytes?: number): Promise<void> {
+    if (bytes != null) {
+      state.store.memoryUsage += bytes
+    }
+
+    // Remove files if memory usage exceeds maxMemoryUsage
+    if (state.store.memoryUsage > state.config.maxMemoryUsage) {
+      // Remove file from persistence queue
+      const file = state.fileQueue.dequeue()
+      if (file != null) {
+        await deleteStoreFile(file.key)
       }
     }
   }
 
-  return memlet
+  function getCacheKey(path: string): string {
+    return `${memletInstanceId}:${path}`
+  }
+
+  /**
+   * Complete action will commit the aciton to the peristence layer (disklet).
+   */
+  async function completeAction(action: Action): Promise<void> {
+    const { file, actionType } = action
+    const path = fileKeyToPath(file.key)
+    const dataString = JSON.stringify(file.data)
+
+    switch (actionType) {
+      case 'write':
+        await disklet.setText(path, dataString)
+        break
+      case 'delete':
+        await disklet.delete(path)
+        break
+    }
+  }
+
+  async function flushActions(): Promise<void> {
+    for (let i = 0; i < MAX_BATCH_SIZE; ++i) {
+      // Pull out any memory-only files
+      const action = state.actionQueue.dequeue()
+
+      // Exit loop if no memory-only files
+      if (action == null) break
+
+      // Persist file
+      await completeAction(action)
+
+      // Move file to written file queue
+      state.fileQueue.requeue(action.file)
+    }
+    // Add file's size to memory usage
+    await adjustMemoryUsage(0)
+  }
+
+  /**
+   * Scheduler to drain file's from memory onto disk.
+   * This is run continually at a constant interval once invoked until
+   * there are no more memory-only files.
+   */
+  function startFlushing(): Promise<void> {
+    // If timeout is already running then do nothing
+    if (nextFlushEvent != null) return nextFlushEvent
+
+    return new Promise((resolve, reject) => {
+      delay(DRAIN_INTERVAL)
+        .then(flushActions)
+        .then(() => {
+          if (state.actionQueue.list().length > 0) {
+            return startFlushing()
+          }
+
+          resolve()
+          nextFlushEvent = undefined
+        })
+        .catch(err => {
+          // Uh oh spaghettios
+          reject(err)
+          nextFlushEvent = undefined
+        })
+    })
+  }
 }
 
 // Update's module's config
-export function setMemletConfig(config: Partial<MemletConfig>) {
+export function setMemletConfig(config: Partial<MemletConfig>): void {
   // Divide given maxMemoryUsage config parameter to respresent char-length
-  if (config.maxMemoryUsage) {
+  if (config.maxMemoryUsage != null) {
     config.maxMemoryUsage = config.maxMemoryUsage / 2
   }
 
@@ -228,14 +338,15 @@ export function setMemletConfig(config: Partial<MemletConfig>) {
 }
 
 // Clears the file cache fields in the module's state
-export function clearMemletCache() {
+export function clearMemletCache(): void {
   state.store.memoryUsage = 0
   state.store.files = {}
-  state.fileQueue = makeFileQueue()
+  state.fileQueue = makeQueue()
+  state.actionQueue = makeQueue()
 }
 
 // Resets config and clears file cache
-export function resetMemletState() {
+export function resetMemletState(): void {
   state.config = { ...defaultConfig }
   clearMemletCache()
 }
@@ -245,4 +356,27 @@ export function resetMemletState() {
 // Get the module's state object
 export function _getMemletState(): Readonly<MemletState> {
   return state
+}
+
+/**
+ * Makes an Action for using the file's existing action if available.
+ * We want to use an existing action to keep the same queue position.
+ */
+function makeAction(file: File, actionType: ActionType): Action {
+  const existingAction = state.store.actions[file.key]
+
+  // If action already exists for file, update it and return it.
+  if (existingAction != null) {
+    existingAction.actionType = actionType
+    return existingAction
+  }
+
+  // Create new action for file, store it, and return it
+  const action = {
+    key: file.key,
+    actionType,
+    file
+  }
+  state.store.actions[file.key] = action
+  return action
 }

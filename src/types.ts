@@ -1,5 +1,6 @@
 import { DiskletListing } from 'disklet'
-import { FileQueue } from './file-queue'
+
+import { Queue } from './queue'
 
 export interface Memlet {
   list: (path?: string) => Promise<DiskletListing>
@@ -8,17 +9,21 @@ export interface Memlet {
 
   getJson: (path: string) => Promise<any>
   setJson: (path: string, obj: any) => Promise<void>
+
+  onFlush: Generator<Promise<void> | undefined>
 }
 
 export interface MemletState {
   config: MemletConfig
   store: MemletStore
-  fileQueue: FileQueue
+  fileQueue: Queue<File>
+  actionQueue: Queue<Action>
 }
 
 export interface MemletStore {
   memoryUsage: number
   files: FileMap
+  actions: { [key: string]: Action }
 }
 
 export interface MemletConfig {
@@ -26,13 +31,19 @@ export interface MemletConfig {
 }
 
 export interface FileMap {
-  [filename: string]: File
+  [key: string]: File
 }
 
 export interface File {
-  filename: string
+  key: string
   size: number
   data: any
-  lastTouchedTimestamp: number
   notFoundError?: any
 }
+
+export interface Action {
+  key: string
+  actionType: ActionType
+  file: File
+}
+export type ActionType = 'write' | 'delete'

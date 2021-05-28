@@ -3,22 +3,22 @@ import chaiAsPromised from 'chai-as-promised'
 import { makeMemoryDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
-use(chaiAsPromised)
-
+import { delay } from '../src/helpers/delay'
 import {
   _getMemletState,
   makeMemlet,
-  setMemletConfig,
-  resetMemletState
+  resetMemletState,
+  setMemletConfig
 } from '../src/index'
 import {
-  delay,
   getNormalizeStoreFilenames,
   measureDataSize,
   measureMaxMemoryUsage
 } from './utils'
 
-describe('Memlets with shared state', async () => {
+use(chaiAsPromised)
+
+describe('Memlets with shared state', () => {
   beforeEach('reset memlet state', () => {
     resetMemletState()
   })
@@ -40,6 +40,11 @@ describe('Memlets with shared state', async () => {
     await memletA.setJson('File-A', fileA)
     await delay(10)
     await memletB.setJson('File-B', fileB)
+
+    await Promise.all([
+      memletA.onFlush.next().value,
+      memletB.onFlush.next().value
+    ])
 
     // Check memoryUsage
     expect(measureMaxMemoryUsage(state.store.memoryUsage)).to.equal(fileBSize)
@@ -68,7 +73,13 @@ describe('Memlets with shared state', async () => {
     await memletB.getJson('File-B')
 
     // Cannot access files
-    expect(memletA.getJson('File-B')).to.be.rejectedWith('Cannot load "File-B"')
-    expect(memletB.getJson('File-A')).to.be.rejectedWith('Cannot load "File-A"')
+    // eslint-disable-next-line no-void
+    void expect(memletA.getJson('File-B')).to.be.rejectedWith(
+      'Cannot load "File-B"'
+    )
+    // eslint-disable-next-line no-void
+    void expect(memletB.getJson('File-A')).to.be.rejectedWith(
+      'Cannot load "File-A"'
+    )
   })
 })
