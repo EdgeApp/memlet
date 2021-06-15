@@ -2,7 +2,7 @@ import { Disklet, DiskletListing } from 'disklet'
 
 import { delay } from './helpers/delay'
 import { fileKeyToPath, folderizePath, normalizePath } from './helpers/paths'
-import { makeQueue } from './Queue'
+import { makeQueue } from './queue'
 import {
   Action,
   ActionType,
