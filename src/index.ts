@@ -44,7 +44,7 @@ let countOfMemletInstances = 0
 
 /**
  * Regex to match error message for files not found errors.
- * First, variation is from memory and localStorage memlet backends.
+ * First, variation is from memory and localStorage memlet backend.
  * Second variation is from iOS memlet backend.
  */
 const notFoundErrorMessageRegex = /^Cannot load ".+"$|^Cannot read '.+'$/
@@ -262,7 +262,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
   }
 
   /**
-   * Complete action will commit the aciton to the peristence layer (disklet).
+   * Complete action will commit the action to the persistence layer (disklet).
    */
   async function completeAction(action: Action): Promise<void> {
     const { file, actionType } = action
@@ -328,7 +328,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
 // Update's module's config
 export function setMemletConfig(config: Partial<MemletConfig>): void {
-  // Divide given maxMemoryUsage config parameter to respresent char-length
+  // Divide given maxMemoryUsage config parameter to represent char-length
   if (config.maxMemoryUsage != null) {
     config.maxMemoryUsage = config.maxMemoryUsage / 2
   }
