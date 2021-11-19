@@ -363,25 +363,18 @@ async function flushActions(): Promise<void> {
  * This is run continually at a constant interval once invoked until
  * there are no more memory-only files.
  */
-function startFlushing(): Promise<void> {
+async function startFlushing(): Promise<void> {
   // If timeout is already running then do nothing
-  if (state.nextFlushEvent != null) return state.nextFlushEvent
+  if (state.nextFlushEvent != null) return await state.nextFlushEvent
 
-  return new Promise((resolve, reject) => {
-    delay(DRAIN_INTERVAL)
-      .then(flushActions)
-      .then(() => {
-        if (state.actionQueue.list().length > 0) {
-          return startFlushing()
-        }
-
-        resolve()
-        state.nextFlushEvent = undefined
-      })
-      .catch(err => {
-        // Uh oh spaghettios
-        reject(err)
-        state.nextFlushEvent = undefined
-      })
-  })
+  try {
+    while (state.actionQueue.list().length > 0) {
+      // Delay before flusing actions
+      await delay(DRAIN_INTERVAL)
+      // Flush some of the actions out of the action queue
+      await flushActions()
+    }
+  } finally {
+    state.nextFlushEvent = undefined
+  }
 }
