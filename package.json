@@ -2,8 +2,17 @@
   "name": "memlet",
   "version": "0.1.2",
   "description": "Memory caching library written on top of the Disklet",
-  "author": "Edge (Dba Airbitz, Inc.)",
+  "homepage": "https://github.com/EdgeApp/memlet",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:EdgeApp/memlet.git"
+  },
   "license": "MIT",
+  "author": "Edge (Dba Airbitz, Inc.)",
+  "main": "lib/memlet.cjs.js",
+  "module": "lib/memlet.js",
+  "browser": "lib/memlet.web.js",
+  "types": "lib/src/index.d.ts",
   "files": [
     "CHANGELOG.md",
     "lib",
@@ -11,23 +20,21 @@
     "README.md",
     "src"
   ],
-  "main": "lib/memlet.cjs.js",
-  "module": "lib/memlet.js",
-  "browser": "lib/memlet.web.js",
-  "types": "lib/src/index.d.ts",
   "scripts": {
+    "dev": "mocha -r sucrase/register test/**/*.test.ts --watch --watch-files 'src/**/*, test/**/*'",
     "fix": "yarn lint --fix",
     "lint": "eslint .",
     "precommit": "lint-staged && yarn test && yarn prepare",
     "prepare": "rimraf lib && rollup -c && tsc",
-    "test": "mocha -r sucrase/register test/**/*.test.ts",
-    "dev": "mocha -r sucrase/register test/**/*.test.ts --watch --watch-files 'src/**/*, test/**/*'"
-  },
-  "hooks": {
-    "pre-commit": "yarn precommit"
+    "test": "mocha -r sucrase/register test/**/*.test.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": "eslint"
+  },
+  "dependencies": {
+    "@types/chai-as-promised": "^7.1.3",
+    "chai-as-promised": "^7.1.1",
+    "disklet": "^0.4.5"
   },
   "devDependencies": {
     "@babel/core": "^7.11.4",
@@ -57,9 +64,7 @@
     "sucrase": "^3.15.0",
     "typescript": "^4.2.4"
   },
-  "dependencies": {
-    "@types/chai-as-promised": "^7.1.3",
-    "chai-as-promised": "^7.1.1",
-    "disklet": "^0.4.5"
+  "hooks": {
+    "pre-commit": "yarn precommit"
   }
 }
