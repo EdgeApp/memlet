@@ -1,6 +1,6 @@
 {
   "name": "memlet",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Memory caching library written on top of the Disklet",
   "homepage": "https://github.com/EdgeApp/memlet",
   "repository": {

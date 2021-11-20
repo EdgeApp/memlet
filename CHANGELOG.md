@@ -1,7 +1,9 @@
 # memlet
 
+## 0.1.3 (2021-11-19)
+- Add homepage and repository links to package
+
 ## 0.1.2 (2021-11-19)
-###
 - Fix cross-instance action queue bug
 - Fix unresolved promise bug within action flushing algorithm
 - Fix missing delete action bug
