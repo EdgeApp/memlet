@@ -3,14 +3,7 @@ import { Disklet, DiskletListing } from 'disklet'
 import { delay } from './helpers/delay'
 import { fileKeyToPath, folderizePath, normalizePath } from './helpers/paths'
 import { makeQueue } from './queue'
-import {
-  Action,
-  ActionType,
-  File,
-  Memlet,
-  MemletConfig,
-  MemletState
-} from './types'
+import { Action, File, Memlet, MemletConfig, MemletState } from './types'
 
 export * from './types'
 
@@ -73,9 +66,15 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
       if (file != null) {
         state.fileQueue.remove(file)
-        state.actionQueue.requeue(makeAction(disklet, file, 'delete'))
-        state.nextFlushEvent = startFlushing()
       }
+
+      state.actionQueue.requeue(
+        makeAction(getCacheKey(path), async () => {
+          // Delete file from disklet
+          await disklet.delete(path)
+        })
+      )
+      state.nextFlushEvent = startFlushing()
     },
 
     // Lists objects from a given path
@@ -172,7 +171,17 @@ export function makeMemlet(disklet: Disklet): Memlet {
         state.fileQueue.remove(file)
 
         // Update position in the action queue
-        state.actionQueue.requeue(makeAction(disklet, file, 'write'))
+        state.actionQueue.requeue(
+          makeAction(file.key, async () => {
+            // Write file to disklet
+            await disklet.setText(
+              fileKeyToPath(file.key),
+              JSON.stringify(file.data)
+            )
+            // Move file to written file queue
+            state.fileQueue.requeue(file)
+          })
+        )
 
         // Calculate the difference in memory usage if there is an existing file
         const sizeDiff = file.size - previousSize
@@ -214,8 +223,18 @@ export function makeMemlet(disklet: Disklet): Memlet {
       notFoundError
     }
 
-    // Add file to file queue
-    state.actionQueue.requeue(makeAction(disklet, file, 'write'))
+    // Add write action action queue to file queue
+    state.actionQueue.requeue(
+      makeAction(file.key, async () => {
+        // Write file to disklet
+        await disklet.setText(
+          fileKeyToPath(file.key),
+          JSON.stringify(file.data)
+        )
+        // Move file to written file queue
+        state.fileQueue.requeue(file)
+      })
+    )
 
     // Add file to the store files map
     state.store.files[key] = file
@@ -295,51 +314,32 @@ async function adjustMemoryUsage(bytes?: number): Promise<void> {
 }
 
 /**
- * Makes an Action using the file's existing action if available.
- * We want to use an existing action to keep the same queue position.
+ * Makes an Action for a given key.
+ * It will update and return the existing action from the store for the key's
+ * if available.
+ * We want to use an existing action reference to maintain the same position
+ * in the action queue.
  */
-function makeAction(
-  disklet: Disklet,
-  file: File,
-  actionType: ActionType
-): Action {
-  const existingAction = state.store.actions[file.key]
-
-  // If action already exists for file, update it and return it.
+function makeAction(key: string, routine: () => Promise<void>): Action {
+  // If action already exists the given key, update it and return it.
+  const existingAction = state.store.actions[key]
   if (existingAction != null) {
-    existingAction.actionType = actionType
+    existingAction.routine = routine
     return existingAction
   }
 
-  // Create new action for file, store it, and return it
+  // Create new action, store it, and return it
   const action = {
-    key: file.key,
-    actionType,
-    file,
-    disklet
+    key,
+    routine
   }
-  state.store.actions[file.key] = action
+  state.store.actions[key] = action
   return action
 }
 
 /**
- * Complete action will commit the action to the persistence layer (disklet).
+ * Completes a fixed batch size of actions.
  */
-async function completeAction(action: Action): Promise<void> {
-  const { file, actionType, disklet } = action
-  const path = fileKeyToPath(file.key)
-  const dataString = JSON.stringify(file.data)
-
-  switch (actionType) {
-    case 'write':
-      await disklet.setText(path, dataString)
-      break
-    case 'delete':
-      await disklet.delete(path)
-      break
-  }
-}
-
 async function flushActions(): Promise<void> {
   for (let i = 0; i < MAX_BATCH_SIZE; ++i) {
     // Pull out any memory-only files
@@ -349,10 +349,7 @@ async function flushActions(): Promise<void> {
     if (action == null) break
 
     // Persist file
-    await completeAction(action)
-
-    // Move file to written file queue
-    state.fileQueue.requeue(action.file)
+    await action.routine()
   }
   // Add file's size to memory usage
   await adjustMemoryUsage(0)

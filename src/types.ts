@@ -1,4 +1,4 @@
-import { Disklet, DiskletListing } from 'disklet'
+import { DiskletListing } from 'disklet'
 
 import { Queue } from './queue'
 
@@ -44,8 +44,5 @@ export interface File {
 
 export interface Action {
   key: string
-  actionType: ActionType
-  file: File
-  disklet: Disklet
+  routine: () => Promise<void>
 }
-export type ActionType = 'write' | 'delete'
