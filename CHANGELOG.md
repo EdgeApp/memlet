@@ -1,6 +1,6 @@
 # memlet
 
-## Unreleased
+## 0.1.2 (2021-11-19)
 ###
 - Fix cross-instance action queue bug
 - Fix unresolved promise bug within action flushing algorithm
