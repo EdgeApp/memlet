@@ -18,6 +18,7 @@ export interface MemletState {
   store: MemletStore
   fileQueue: Queue<File>
   actionQueue: Queue<Action>
+  nextFlushEvent: Promise<void> | undefined
 }
 
 export interface MemletStore {
@@ -43,7 +44,5 @@ export interface File {
 
 export interface Action {
   key: string
-  actionType: ActionType
-  file: File
+  routine: () => Promise<void>
 }
-export type ActionType = 'write' | 'delete'

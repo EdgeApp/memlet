@@ -1,5 +1,11 @@
 # memlet
 
+## Unreleased
+###
+- Fix cross-instance action queue bug
+- Fix unresolved promise bug within action flushing algorithm
+- Fix missing delete action bug
+
 ## 0.1.1 (2021-6-15)
 ### Fixed
 - Correct queue importing in index.ts

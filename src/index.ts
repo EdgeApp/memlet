@@ -3,14 +3,7 @@ import { Disklet, DiskletListing } from 'disklet'
 import { delay } from './helpers/delay'
 import { fileKeyToPath, folderizePath, normalizePath } from './helpers/paths'
 import { makeQueue } from './queue'
-import {
-  Action,
-  ActionType,
-  File,
-  Memlet,
-  MemletConfig,
-  MemletState
-} from './types'
+import { Action, File, Memlet, MemletConfig, MemletState } from './types'
 
 export * from './types'
 
@@ -26,7 +19,8 @@ const state: MemletState = {
     actions: {}
   },
   fileQueue: makeQueue(),
-  actionQueue: makeQueue()
+  actionQueue: makeQueue(),
+  nextFlushEvent: undefined
 }
 
 /**
@@ -44,7 +38,7 @@ let countOfMemletInstances = 0
 
 /**
  * Regex to match error message for files not found errors.
- * First, variation is from memory and localStorage memlet backends.
+ * First, variation is from memory and localStorage memlet backend.
  * Second variation is from iOS memlet backend.
  */
 const notFoundErrorMessageRegex = /^Cannot load ".+"$|^Cannot read '.+'$/
@@ -55,8 +49,6 @@ export function makeMemlet(disklet: Disklet): Memlet {
    * file's key in the shared file cache.
    */
   const memletInstanceId = countOfMemletInstances++
-
-  let nextFlushEvent: Promise<void> | undefined
 
   // ---------------------------------------------------------------------
   // Memlet Public Interface
@@ -74,8 +66,15 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
       if (file != null) {
         state.fileQueue.remove(file)
-        state.actionQueue.requeue(makeAction(file, 'delete'))
       }
+
+      state.actionQueue.requeue(
+        makeAction(getCacheKey(path), async () => {
+          // Delete file from disklet
+          await disklet.delete(path)
+        })
+      )
+      state.nextFlushEvent = startFlushing()
     },
 
     // Lists objects from a given path
@@ -172,7 +171,17 @@ export function makeMemlet(disklet: Disklet): Memlet {
         state.fileQueue.remove(file)
 
         // Update position in the action queue
-        state.actionQueue.requeue(makeAction(file, 'write'))
+        state.actionQueue.requeue(
+          makeAction(file.key, async () => {
+            // Write file to disklet
+            await disklet.setText(
+              fileKeyToPath(file.key),
+              JSON.stringify(file.data)
+            )
+            // Move file to written file queue
+            state.fileQueue.requeue(file)
+          })
+        )
 
         // Calculate the difference in memory usage if there is an existing file
         const sizeDiff = file.size - previousSize
@@ -184,12 +193,12 @@ export function makeMemlet(disklet: Disklet): Memlet {
       }
 
       // Schedule to flush action queue
-      nextFlushEvent = startFlushing()
+      state.nextFlushEvent = startFlushing()
     },
 
     onFlush: (function* flushEventGenerator() {
       while (true) {
-        yield nextFlushEvent
+        yield state.nextFlushEvent
       }
     })()
   }
@@ -214,8 +223,18 @@ export function makeMemlet(disklet: Disklet): Memlet {
       notFoundError
     }
 
-    // Add file to file queue
-    state.actionQueue.requeue(makeAction(file, 'write'))
+    // Add write action action queue to file queue
+    state.actionQueue.requeue(
+      makeAction(file.key, async () => {
+        // Write file to disklet
+        await disklet.setText(
+          fileKeyToPath(file.key),
+          JSON.stringify(file.data)
+        )
+        // Move file to written file queue
+        state.fileQueue.requeue(file)
+      })
+    )
 
     // Add file to the store files map
     state.store.files[key] = file
@@ -224,111 +243,14 @@ export function makeMemlet(disklet: Disklet): Memlet {
     await adjustMemoryUsage(file.size)
   }
 
-  // Used to add undefined type checking to file retrieval
-  function getStoreFile(key: string): File | undefined {
-    return state.store.files[key]
-  }
-
-  async function deleteStoreFile(key: string): Promise<File | undefined> {
-    const file = getStoreFile(key)
-
-    if (file != null) {
-      // Deleting file from store should invoke adjustMemoryUsage again
-      await adjustMemoryUsage(-file.size)
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      delete state.store.files[key]
-    }
-
-    return file
-  }
-
-  async function adjustMemoryUsage(bytes?: number): Promise<void> {
-    if (bytes != null) {
-      state.store.memoryUsage += bytes
-    }
-
-    // Remove files if memory usage exceeds maxMemoryUsage
-    if (state.store.memoryUsage > state.config.maxMemoryUsage) {
-      // Remove file from persistence queue
-      const file = state.fileQueue.dequeue()
-      if (file != null) {
-        await deleteStoreFile(file.key)
-      }
-    }
-  }
-
   function getCacheKey(path: string): string {
     return `${memletInstanceId}:${path}`
-  }
-
-  /**
-   * Complete action will commit the aciton to the peristence layer (disklet).
-   */
-  async function completeAction(action: Action): Promise<void> {
-    const { file, actionType } = action
-    const path = fileKeyToPath(file.key)
-    const dataString = JSON.stringify(file.data)
-
-    switch (actionType) {
-      case 'write':
-        await disklet.setText(path, dataString)
-        break
-      case 'delete':
-        await disklet.delete(path)
-        break
-    }
-  }
-
-  async function flushActions(): Promise<void> {
-    for (let i = 0; i < MAX_BATCH_SIZE; ++i) {
-      // Pull out any memory-only files
-      const action = state.actionQueue.dequeue()
-
-      // Exit loop if no memory-only files
-      if (action == null) break
-
-      // Persist file
-      await completeAction(action)
-
-      // Move file to written file queue
-      state.fileQueue.requeue(action.file)
-    }
-    // Add file's size to memory usage
-    await adjustMemoryUsage(0)
-  }
-
-  /**
-   * Scheduler to drain file's from memory onto disk.
-   * This is run continually at a constant interval once invoked until
-   * there are no more memory-only files.
-   */
-  function startFlushing(): Promise<void> {
-    // If timeout is already running then do nothing
-    if (nextFlushEvent != null) return nextFlushEvent
-
-    return new Promise((resolve, reject) => {
-      delay(DRAIN_INTERVAL)
-        .then(flushActions)
-        .then(() => {
-          if (state.actionQueue.list().length > 0) {
-            return startFlushing()
-          }
-
-          resolve()
-          nextFlushEvent = undefined
-        })
-        .catch(err => {
-          // Uh oh spaghettios
-          reject(err)
-          nextFlushEvent = undefined
-        })
-    })
   }
 }
 
 // Update's module's config
 export function setMemletConfig(config: Partial<MemletConfig>): void {
-  // Divide given maxMemoryUsage config parameter to respresent char-length
+  // Divide given maxMemoryUsage config parameter to represent char-length
   if (config.maxMemoryUsage != null) {
     config.maxMemoryUsage = config.maxMemoryUsage / 2
   }
@@ -358,25 +280,98 @@ export function _getMemletState(): Readonly<MemletState> {
   return state
 }
 
-/**
- * Makes an Action for using the file's existing action if available.
- * We want to use an existing action to keep the same queue position.
- */
-function makeAction(file: File, actionType: ActionType): Action {
-  const existingAction = state.store.actions[file.key]
+// Used to add undefined type checking to file retrieval
+function getStoreFile(key: string): File | undefined {
+  return state.store.files[key]
+}
 
-  // If action already exists for file, update it and return it.
+async function deleteStoreFile(key: string): Promise<File | undefined> {
+  const file = getStoreFile(key)
+
+  if (file != null) {
+    // Deleting file from store should invoke adjustMemoryUsage again
+    await adjustMemoryUsage(-file.size)
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete state.store.files[key]
+  }
+
+  return file
+}
+
+async function adjustMemoryUsage(bytes?: number): Promise<void> {
+  if (bytes != null) {
+    state.store.memoryUsage += bytes
+  }
+
+  // Remove files if memory usage exceeds maxMemoryUsage
+  if (state.store.memoryUsage > state.config.maxMemoryUsage) {
+    // Remove file from persistence queue
+    const file = state.fileQueue.dequeue()
+    if (file != null) {
+      await deleteStoreFile(file.key)
+    }
+  }
+}
+
+/**
+ * Makes an Action for a given key.
+ * It will update and return the existing action from the store for the key's
+ * if available.
+ * We want to use an existing action reference to maintain the same position
+ * in the action queue.
+ */
+function makeAction(key: string, routine: () => Promise<void>): Action {
+  // If action already exists the given key, update it and return it.
+  const existingAction = state.store.actions[key]
   if (existingAction != null) {
-    existingAction.actionType = actionType
+    existingAction.routine = routine
     return existingAction
   }
 
-  // Create new action for file, store it, and return it
+  // Create new action, store it, and return it
   const action = {
-    key: file.key,
-    actionType,
-    file
+    key,
+    routine
   }
-  state.store.actions[file.key] = action
+  state.store.actions[key] = action
   return action
+}
+
+/**
+ * Completes a fixed batch size of actions.
+ */
+async function flushActions(): Promise<void> {
+  for (let i = 0; i < MAX_BATCH_SIZE; ++i) {
+    // Pull out any memory-only files
+    const action = state.actionQueue.dequeue()
+
+    // Exit loop if no memory-only files
+    if (action == null) break
+
+    // Persist file
+    await action.routine()
+  }
+  // Add file's size to memory usage
+  await adjustMemoryUsage(0)
+}
+
+/**
+ * Scheduler to drain file's from memory onto disk.
+ * This is run continually at a constant interval once invoked until
+ * there are no more memory-only files.
+ */
+async function startFlushing(): Promise<void> {
+  // If timeout is already running then do nothing
+  if (state.nextFlushEvent != null) return await state.nextFlushEvent
+
+  try {
+    while (state.actionQueue.list().length > 0) {
+      // Delay before flusing actions
+      await delay(DRAIN_INTERVAL)
+      // Flush some of the actions out of the action queue
+      await flushActions()
+    }
+  } finally {
+    state.nextFlushEvent = undefined
+  }
 }
