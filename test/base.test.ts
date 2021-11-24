@@ -82,7 +82,7 @@ describe('Memlet', () => {
   })
 
   it('will not leak memory in queues', async () => {
-    const { fileQueue, actionQueue } = _getMemletState()
+    const { fileMemoryQueue: fileQueue, actionQueue } = _getMemletState()
 
     const hasNoDuplicates = (files: QueueItem[]): void => {
       const keys = files.map(({ key }) => key)

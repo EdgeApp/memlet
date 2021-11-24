@@ -19,7 +19,7 @@ const state: MemletState = {
     errors: {},
     actions: {}
   },
-  fileQueue: makeQueue(),
+  fileMemoryQueue: makeQueue(),
   actionQueue: makeQueue(),
   nextFlushEvent: undefined
 }
@@ -66,7 +66,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
       const file = await deleteStoreFile(filePathToKey(path))
 
       if (file != null) {
-        state.fileQueue.remove(file)
+        state.fileMemoryQueue.remove(file)
       }
 
       queueDeleteAction(filePathToKey(path))
@@ -104,7 +104,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
       if (file != null) {
         // Update position in the file queue
-        state.fileQueue.requeue(file)
+        state.fileMemoryQueue.requeue(file)
 
         // Return file found in memory store
         return file.data
@@ -169,7 +169,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
         delete state.store.errors[key]
 
         // Remove file from file queue because it has been updated
-        state.fileQueue.remove(file)
+        state.fileMemoryQueue.remove(file)
 
         // Updates position in the action queue
         queueWriteAction(file)
@@ -216,7 +216,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
           JSON.stringify(file.data)
         )
         // Move file to written file queue
-        state.fileQueue.requeue(file)
+        state.fileMemoryQueue.requeue(file)
       })
     )
   }
@@ -251,7 +251,7 @@ export function setMemletConfig(config: Partial<MemletConfig>): void {
 export function clearMemletCache(): void {
   state.store.memoryUsage = 0
   state.store.files = {}
-  state.fileQueue = makeQueue()
+  state.fileMemoryQueue = makeQueue()
   state.actionQueue = makeQueue()
 }
 
@@ -316,7 +316,7 @@ async function adjustMemoryUsage(bytes?: number): Promise<void> {
   // Remove files if memory usage exceeds maxMemoryUsage
   if (state.store.memoryUsage > state.config.maxMemoryUsage) {
     // Remove file from persistence queue
-    const file = state.fileQueue.dequeue()
+    const file = state.fileMemoryQueue.dequeue()
     if (file != null) {
       await deleteStoreFile(file.key)
     }

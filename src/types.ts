@@ -16,7 +16,14 @@ export interface Memlet {
 export interface MemletState {
   config: MemletConfig
   store: MemletStore
-  fileQueue: Queue<File>
+
+  /**
+   * A queue of files in stored in memory ordered by most-recently-used.
+   * This is used to implement the MRU cache of files by having a queue of files
+   * with which to dequeue from the cache (MemletStore).
+   */
+  fileMemoryQueue: Queue<File>
+
   actionQueue: Queue<Action>
   nextFlushEvent: Promise<void> | undefined
 }
