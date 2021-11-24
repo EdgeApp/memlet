@@ -62,7 +62,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
        * (because disklet delete might succeed in delete, but fail on
        * something else).
        */
-      const file = await deleteStoreFile(path)
+      const file = await deleteStoreFile(getCacheKey(path))
 
       if (file != null) {
         state.fileQueue.remove(file)

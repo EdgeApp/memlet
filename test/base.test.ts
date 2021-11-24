@@ -213,4 +213,47 @@ describe('Memlet', () => {
     // Read data should match write data
     expect(readData).to.equal(writeData)
   })
+
+  it('will properly delete', async () => {
+    const disklet = makeMemoryDisklet()
+    const memlet = makeMemlet(disklet)
+
+    const filename = 'file-to-delete'
+
+    // Write file
+    await memlet.setJson(filename, 'some data')
+
+    // Assertions after write
+    expect(await memlet.list(), 'memlet after write').to.deep.equal({
+      [filename]: 'file'
+    })
+    expect(await disklet.list(), 'disklet after write').to.deep.equal({})
+
+    // Wait for write action to be flushed
+    await memlet.onFlush.next().value
+
+    // Assertions after write action flush
+    expect(await memlet.list(), 'memlet after write flush').to.deep.equal({
+      [filename]: 'file'
+    })
+    expect(await disklet.list(), 'disklet after write flush').to.deep.equal({
+      [filename]: 'file'
+    })
+
+    // Delete file
+    await memlet.delete(filename)
+
+    // Assertions after delete
+    expect(await memlet.list(), 'memlet after delete').to.deep.equal({})
+    expect(await disklet.list(), 'disklet after delete').to.deep.equal({
+      [filename]: 'file'
+    })
+
+    // Wait for delete action to be flushed
+    await memlet.onFlush.next().value
+
+    // Assertions after delete action flush
+    expect(await memlet.list(), 'memlet after delete flush').to.deep.equal({})
+    expect(await disklet.list(), 'disklet after delete flush').to.deep.equal({})
+  })
 })
