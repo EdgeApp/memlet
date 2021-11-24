@@ -111,9 +111,6 @@ export function makeMemlet(disklet: Disklet): Memlet {
         // Update position in the file queue
         state.fileQueue.requeue(file)
 
-        // Invoke adjustMemoryUsage to potentially evict files
-        await adjustMemoryUsage(0)
-
         // Return file found in memory store
         return file.data
       } else {
