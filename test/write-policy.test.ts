@@ -3,7 +3,12 @@ import { DiskletListing, makeMemoryDisklet } from 'disklet'
 import { describe, it } from 'mocha'
 
 import { delay } from '../src/helpers/delay'
-import { DRAIN_INTERVAL, makeMemlet, MAX_BATCH_SIZE } from '../src/index'
+import {
+  DRAIN_INTERVAL,
+  makeMemlet,
+  MAX_BATCH_SIZE,
+  notFoundErrorMessageRegex
+} from '../src/index'
 
 describe('Memlet write-policy', () => {
   it('will write files to write-back after drain-delay', async () => {
@@ -127,5 +132,29 @@ describe('Memlet write-policy', () => {
       bbb: 'file',
       ccc: 'file'
     })
+  })
+
+  it('wont recover a deleted file from backing-store after read ', async () => {
+    // make a disklet and a memlet
+    const disklet = makeMemoryDisklet()
+    const memlet = makeMemlet(disklet)
+
+    // write a file to memlet
+    await memlet.setJson('deleted-file', 'deleted-file content')
+
+    // Wait until flush event
+    await memlet.onFlush.next().value
+
+    // delete the file from memlet
+    await memlet.delete('deleted-file')
+
+    // Read the file from memlet, expecting the promise to reject with a not found error
+    await expect(
+      memlet.getJson('deleted-file'),
+      'file should not be recovered'
+    ).to.eventually.be.rejectedWith(notFoundErrorMessageRegex)
+
+    // List files from memlet, and expect list to be empty
+    expect(await memlet.list(), `memlet files after delete`).deep.equals({})
   })
 })

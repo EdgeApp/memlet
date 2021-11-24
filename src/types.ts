@@ -48,5 +48,6 @@ export interface File {
 
 export interface Action {
   key: string
+  type: 'write' | 'delete'
   routine: () => Promise<void>
 }

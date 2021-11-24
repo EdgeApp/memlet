@@ -70,7 +70,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
       }
 
       state.actionQueue.requeue(
-        makeAction(getCacheKey(path), async () => {
+        makeAction(getCacheKey(path), 'delete', async () => {
           // Delete file from disklet
           await disklet.delete(path)
         })
@@ -124,6 +124,10 @@ export function makeMemlet(disklet: Disklet): Memlet {
         }
 
         try {
+          // Simulate not-found error if there exists an action in the queue to delete the file
+          if (state.store.actions[key]?.type === 'delete')
+            throw new Error(`Cannot load "${path}""`)
+
           // Retrieve file from disklet, store it, then return
           const dataString = await disklet.getText(path)
           const data = JSON.parse(dataString)
@@ -176,7 +180,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
         // Update position in the action queue
         state.actionQueue.requeue(
-          makeAction(file.key, async () => {
+          makeAction(file.key, 'write', async () => {
             // Write file to disklet
             await disklet.setText(
               fileKeyToPath(file.key),
@@ -227,7 +231,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
     // Add write action action queue to file queue
     state.actionQueue.requeue(
-      makeAction(file.key, async () => {
+      makeAction(file.key, 'write', async () => {
         // Write file to disklet
         await disklet.setText(
           fileKeyToPath(file.key),
@@ -322,7 +326,11 @@ async function adjustMemoryUsage(bytes?: number): Promise<void> {
  * We want to use an existing action reference to maintain the same position
  * in the action queue.
  */
-function makeAction(key: string, routine: () => Promise<void>): Action {
+function makeAction(
+  key: string,
+  type: Action['type'],
+  routine: () => Promise<void>
+): Action {
   // If action already exists the given key, update it and return it.
   const existingAction = state.store.actions[key]
   if (existingAction != null) {
@@ -333,6 +341,7 @@ function makeAction(key: string, routine: () => Promise<void>): Action {
   // Create new action, store it, and return it
   const action = {
     key,
+    type,
     routine
   }
   state.store.actions[key] = action
