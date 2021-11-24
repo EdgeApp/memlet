@@ -63,14 +63,14 @@ export function makeMemlet(disklet: Disklet): Memlet {
        * (because disklet delete might succeed in delete, but fail on
        * something else).
        */
-      const file = await deleteStoreFile(getCacheKey(path))
+      const file = await deleteStoreFile(filePathToKey(path))
 
       if (file != null) {
         state.fileQueue.remove(file)
       }
 
       state.actionQueue.requeue(
-        makeAction(getCacheKey(path), 'delete', async () => {
+        makeAction(filePathToKey(path), 'delete', async () => {
           // Delete file from disklet
           await disklet.delete(path)
         })
@@ -81,14 +81,14 @@ export function makeMemlet(disklet: Disklet): Memlet {
     // Lists objects from a given path
     list: async (path: string = '') => {
       const filepath = normalizePath(path)
-      const key = getCacheKey(filepath)
+      const key = filePathToKey(filepath)
       const out: DiskletListing = {}
 
       // Try the path as a file:
       if (state.store.files[key] != null) out[filepath] = 'file'
 
       // Try the path as a folder:
-      const folderKey = getCacheKey(folderizePath(filepath))
+      const folderKey = filePathToKey(folderizePath(filepath))
       for (const key of Object.keys(state.store.files)) {
         // Skip if file is not in folder search path
         if (key.indexOf(folderKey) !== 0) continue
@@ -104,7 +104,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
 
     // Get an object at given path
     getJson: async (path: string) => {
-      const key = getCacheKey(path)
+      const key = filePathToKey(path)
       const file = getStoreFile(key)
 
       if (file != null) {
@@ -157,7 +157,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
        * Write-through policy: write to memory cache first, then let the data be
        * drained to disklet later.
        */
-      const key = getCacheKey(path)
+      const key = filePathToKey(path)
       const file = getStoreFile(key)
       const dataString = JSON.stringify(data)
 
@@ -244,7 +244,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
     await adjustMemoryUsage(file.size)
   }
 
-  function getCacheKey(path: string): string {
+  function filePathToKey(path: string): string {
     return `${memletInstanceId}:${path}`
   }
 }
