@@ -16,6 +16,7 @@ const state: MemletState = {
   store: {
     memoryUsage: 0,
     files: {},
+    errors: {},
     actions: {}
   },
   fileQueue: makeQueue(),
@@ -41,7 +42,7 @@ let countOfMemletInstances = 0
  * First, variation is from memory and localStorage memlet backend.
  * Second variation is from iOS memlet backend.
  */
-const notFoundErrorMessageRegex = /^Cannot load ".+"$|^Cannot read '.+'$/
+export const notFoundErrorMessageRegex = /^Cannot load ".+"$|^Cannot read '.+'$/
 
 export function makeMemlet(disklet: Disklet): Memlet {
   /**
@@ -89,6 +90,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
       // Try the path as a folder:
       const folderKey = getCacheKey(folderizePath(filepath))
       for (const key of Object.keys(state.store.files)) {
+        // Skip if file is not in folder search path
         if (key.indexOf(folderKey) !== 0) continue
 
         const pathOfKey = key.split(':')[1]
@@ -112,14 +114,15 @@ export function makeMemlet(disklet: Disklet): Memlet {
         // Invoke adjustMemoryUsage to potentially evict files
         await adjustMemoryUsage(0)
 
-        // If file contains a caught error, throw it.
-        if (file.notFoundError != null) {
-          throw file.notFoundError
-        }
-
         // Return file found in memory store
         return file.data
       } else {
+        // error-optimization (see below)):
+        // If there is a cached error for this file, throw it.
+        if (state.store.errors[key] != null) {
+          throw state.store.errors[key]
+        }
+
         try {
           // Retrieve file from disklet, store it, then return
           const dataString = await disklet.getText(path)
@@ -130,15 +133,15 @@ export function makeMemlet(disklet: Disklet): Memlet {
           return data
         } catch (err) {
           /**
-           * For file not found errors, store null data, include the error
-           * object, and then then re-throw. This saves needless disklet
-           * accesses on subsequent getJson invocations.
+           * This is the error-optimization. Errors are stored to be re-thrown.
+           * This saves needless disklet accesses on subsequent getJson
+           * invocations.
            */
           if (
             notFoundErrorMessageRegex.test(err?.message) ||
             err?.code === 'ENOENT'
           ) {
-            await addStoreFile(path, null, 0, err)
+            state.store.errors[key] = err
           }
 
           // Re-throw the error from disklet
@@ -165,7 +168,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
         file.size = dataString.length
 
         // Remove error object if present
-        delete file.notFoundError
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete state.store.errors[key]
 
         // Remove file from file queue because it has been updated
         state.fileQueue.remove(file)
@@ -211,16 +215,14 @@ export function makeMemlet(disklet: Disklet): Memlet {
   async function addStoreFile(
     path: string,
     data: any,
-    size: number,
-    notFoundError?: any
+    size: number
   ): Promise<void> {
     const key = getCacheKey(path)
 
     const file: File = {
       key,
       data,
-      size,
-      notFoundError
+      size
     }
 
     // Add write action action queue to file queue

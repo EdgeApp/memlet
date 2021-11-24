@@ -23,12 +23,17 @@ export interface MemletState {
 
 export interface MemletStore {
   memoryUsage: number
+  errors: ErrorMap
   files: FileMap
   actions: { [key: string]: Action }
 }
 
 export interface MemletConfig {
   maxMemoryUsage: number
+}
+
+export interface ErrorMap {
+  [key: string]: any
 }
 
 export interface FileMap {
@@ -39,7 +44,6 @@ export interface File {
   key: string
   size: number
   data: any
-  notFoundError?: any
 }
 
 export interface Action {
