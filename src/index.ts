@@ -28,8 +28,8 @@ const state: MemletState = {
  * This is the number of files to persist to disk at every interval of saving
  * in-memory file data to disk.
  */
-const MAX_BATCH_SIZE = 100
-const DRAIN_INTERVAL = 100
+export const MAX_BATCH_SIZE = 100
+export const DRAIN_INTERVAL = 100
 
 /**
  * This is to keep a running count of memlet instances in order to determine
