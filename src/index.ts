@@ -69,12 +69,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
         state.fileQueue.remove(file)
       }
 
-      state.actionQueue.requeue(
-        makeAction(filePathToKey(path), 'delete', async () => {
-          // Delete file from disklet
-          await disklet.delete(path)
-        })
-      )
+      queueDeleteAction(filePathToKey(path))
       state.nextFlushEvent = startFlushing()
     },
 
@@ -129,7 +124,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
           const dataString = await disklet.getText(path)
           const data = JSON.parse(dataString)
 
-          await addStoreFile(key, data, dataString.length)
+          const file = await addStoreFile(key, data, dataString.length)
+          queueWriteAction(file)
 
           return data
         } catch (err) {
@@ -175,18 +171,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
         // Remove file from file queue because it has been updated
         state.fileQueue.remove(file)
 
-        // Update position in the action queue
-        state.actionQueue.requeue(
-          makeAction(file.key, 'write', async () => {
-            // Write file to disklet
-            await disklet.setText(
-              fileKeyToPath(file.key),
-              JSON.stringify(file.data)
-            )
-            // Move file to written file queue
-            state.fileQueue.requeue(file)
-          })
-        )
+        // Updates position in the action queue
+        queueWriteAction(file)
 
         // Calculate the difference in memory usage if there is an existing file
         const sizeDiff = file.size - previousSize
@@ -194,7 +180,10 @@ export function makeMemlet(disklet: Disklet): Memlet {
         // Update memory usage with size difference
         await adjustMemoryUsage(sizeDiff)
       } else {
-        await addStoreFile(key, data, dataString.length)
+        // Creates new file and stores it in memory cache
+        const newFile = await addStoreFile(key, data, dataString.length)
+        // Queues a write action to backing-store
+        queueWriteAction(newFile)
       }
 
       // Schedule to flush action queue
@@ -217,14 +206,28 @@ export function makeMemlet(disklet: Disklet): Memlet {
     key: string,
     data: any,
     size: number
-  ): Promise<void> {
+  ): Promise<File> {
     const file: File = {
       key,
       data,
       size
     }
 
-    // Add write action action queue to file queue
+    // Add file to the store files map
+    state.store.files[key] = file
+
+    // Add file's size to memory usage
+    await adjustMemoryUsage(file.size)
+
+    return file
+  }
+
+  function filePathToKey(path: string): string {
+    return `${memletInstanceId}:${path}`
+  }
+
+  function queueWriteAction(file: File): void {
+    // Add write action queue to file queue
     state.actionQueue.requeue(
       makeAction(file.key, 'write', async () => {
         // Write file to disklet
@@ -236,16 +239,16 @@ export function makeMemlet(disklet: Disklet): Memlet {
         state.fileQueue.requeue(file)
       })
     )
-
-    // Add file to the store files map
-    state.store.files[key] = file
-
-    // Add file's size to memory usage
-    await adjustMemoryUsage(file.size)
   }
 
-  function filePathToKey(path: string): string {
-    return `${memletInstanceId}:${path}`
+  function queueDeleteAction(key: string): void {
+    // Add write action queue to file queue
+    state.actionQueue.requeue(
+      makeAction(key, 'delete', async () => {
+        // Delete file from disklet
+        await disklet.delete(fileKeyToPath(key))
+      })
+    )
   }
 }
 
