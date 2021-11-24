@@ -129,7 +129,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
           const dataString = await disklet.getText(path)
           const data = JSON.parse(dataString)
 
-          await addStoreFile(path, data, dataString.length)
+          await addStoreFile(key, data, dataString.length)
 
           return data
         } catch (err) {
@@ -194,7 +194,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
         // Update memory usage with size difference
         await adjustMemoryUsage(sizeDiff)
       } else {
-        await addStoreFile(path, data, dataString.length)
+        await addStoreFile(key, data, dataString.length)
       }
 
       // Schedule to flush action queue
@@ -214,12 +214,10 @@ export function makeMemlet(disklet: Disklet): Memlet {
   // ---------------------------------------------------------------------
 
   async function addStoreFile(
-    path: string,
+    key: string,
     data: any,
     size: number
   ): Promise<void> {
-    const key = getCacheKey(path)
-
     const file: File = {
       key,
       data,
