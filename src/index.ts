@@ -199,28 +199,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
   return memlet
 
   // ---------------------------------------------------------------------
-  // Private Functions
+  // Memlet Private Functions
   // ---------------------------------------------------------------------
-
-  async function addStoreFile(
-    key: string,
-    data: any,
-    size: number
-  ): Promise<File> {
-    const file: File = {
-      key,
-      data,
-      size
-    }
-
-    // Add file to the store files map
-    state.store.files[key] = file
-
-    // Add file's size to memory usage
-    await adjustMemoryUsage(file.size)
-
-    return file
-  }
 
   function filePathToKey(path: string): string {
     return `${memletInstanceId}:${path}`
@@ -252,6 +232,10 @@ export function makeMemlet(disklet: Disklet): Memlet {
   }
 }
 
+// ---------------------------------------------------------------------
+// Module Public Methods
+// ---------------------------------------------------------------------
+
 // Update's module's config
 export function setMemletConfig(config: Partial<MemletConfig>): void {
   // Divide given maxMemoryUsage config parameter to represent char-length
@@ -277,11 +261,33 @@ export function resetMemletState(): void {
   clearMemletCache()
 }
 
-// Internal Methods:
+// ---------------------------------------------------------------------
+// Module Private Methods
+// ---------------------------------------------------------------------
 
-// Get the module's state object
+// Get the module's state object (used for mainly debugging)
 export function _getMemletState(): Readonly<MemletState> {
   return state
+}
+
+async function addStoreFile(
+  key: string,
+  data: any,
+  size: number
+): Promise<File> {
+  const file: File = {
+    key,
+    data,
+    size
+  }
+
+  // Add file to the store files map
+  state.store.files[key] = file
+
+  // Add file's size to memory usage
+  await adjustMemoryUsage(file.size)
+
+  return file
 }
 
 // Used to add undefined type checking to file retrieval
