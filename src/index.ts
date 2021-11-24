@@ -350,6 +350,10 @@ async function flushActions(): Promise<void> {
 
     // Persist file
     await action.routine()
+
+    // Remove action from store
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete state.store.actions[action.key]
   }
   // Add file's size to memory usage
   await adjustMemoryUsage(0)
