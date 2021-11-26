@@ -1,6 +1,6 @@
 # memlet
 
-## Unreleased
+## 0.1.5
 - Add `navigateMemlet`
 
 ## 0.1.4 (2021-11-26)
