@@ -1,5 +1,13 @@
 # memlet
 
+## 0.1.4 (2021-11-26)
+- Fix `.delete` bugs
+  - Files weren't deleted from cache
+  - Race condition caused deleted files to be resurrected from backing-store by `getJson`
+- Fix action store memory leak
+- Fix incorrect file list from `.list` caused by error optimization
+- Add write-policy and integrity tests
+
 ## 0.1.3 (2021-11-19)
 - Add homepage and repository links to package
 
