@@ -82,7 +82,7 @@ describe('Memlet', () => {
   })
 
   it('will not leak memory in queues', async () => {
-    const { fileQueue, actionQueue } = _getMemletState()
+    const { fileMemoryQueue: fileQueue, actionQueue } = _getMemletState()
 
     const hasNoDuplicates = (files: QueueItem[]): void => {
       const keys = files.map(({ key }) => key)
@@ -212,5 +212,76 @@ describe('Memlet', () => {
 
     // Read data should match write data
     expect(readData).to.equal(writeData)
+  })
+
+  it('will properly delete', async () => {
+    const disklet = makeMemoryDisklet()
+    const memlet = makeMemlet(disklet)
+
+    // Constants:
+    const filename = 'file-to-delete'
+    const fileKeyRE = /\d+:file-to-delete$/
+    // Helpers:
+    const hasKey = (keys: string[], search: RegExp): boolean =>
+      keys.some(key => search.test(key))
+    const mapToKeyProp = (items: Array<{ key: string }>): string[] =>
+      items.map(item => item.key)
+    // Memory assertion about action state (queue and store):
+    const expectActionStateToContainKey = (
+      when: string,
+      contains: boolean
+    ): void => {
+      const state = _getMemletState()
+      expect(
+        hasKey(Object.keys(state.store.actions), fileKeyRE),
+        `actions store ${
+          contains ? 'contains' : 'does not contain'
+        } key ${when}`
+      ).to.equal(contains)
+      expect(
+        hasKey(mapToKeyProp(state.actionQueue.list()), fileKeyRE),
+        `action queue ${contains ? 'contains' : 'does not contain'} key ${when}`
+      ).to.equal(contains)
+    }
+
+    // Write file
+    await memlet.setJson(filename, 'some data')
+
+    // Assertions after write
+    expect(await memlet.list(), 'memlet after write').to.deep.equal({
+      [filename]: 'file'
+    })
+    expect(await disklet.list(), 'disklet after write').to.deep.equal({})
+    expectActionStateToContainKey('after write', true)
+
+    // Wait for write action to be flushed
+    await memlet.onFlush.next().value
+
+    // Assertions after write action flush
+    expect(await memlet.list(), 'memlet after write flush').to.deep.equal({
+      [filename]: 'file'
+    })
+    expect(await disklet.list(), 'disklet after write flush').to.deep.equal({
+      [filename]: 'file'
+    })
+    expectActionStateToContainKey('after write flush', false)
+
+    // Delete file
+    await memlet.delete(filename)
+
+    // Assertions after delete
+    expect(await memlet.list(), 'memlet after delete').to.deep.equal({})
+    expect(await disklet.list(), 'disklet after delete').to.deep.equal({
+      [filename]: 'file'
+    })
+    expectActionStateToContainKey('after delete', true)
+
+    // Wait for delete action to be flushed
+    await memlet.onFlush.next().value
+
+    // Assertions after delete action flush
+    expect(await memlet.list(), 'memlet after delete flush').to.deep.equal({})
+    expect(await disklet.list(), 'disklet after delete flush').to.deep.equal({})
+    expectActionStateToContainKey('after delete flush', false)
   })
 })
