@@ -1,5 +1,8 @@
 # memlet
 
+## Unreleased
+- Add `navigateMemlet`
+
 ## 0.1.4 (2021-11-26)
 - Fix `.delete` bugs
   - Files weren't deleted from cache

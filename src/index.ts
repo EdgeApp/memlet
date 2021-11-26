@@ -6,6 +6,7 @@ import { makeQueue } from './queue'
 import { Action, File, Memlet, MemletConfig, MemletState } from './types'
 
 export * from './types'
+export { navigateMemlet } from './helpers/navigate'
 
 const defaultConfig: MemletConfig = {
   maxMemoryUsage: Infinity
