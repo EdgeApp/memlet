@@ -1,5 +1,8 @@
 # memlet
 
+## Unreleased
+- Fix `memlet.list` to read directly from disklet after action queue is flushed.
+
 ## 0.1.5
 - Add `navigateMemlet`
 

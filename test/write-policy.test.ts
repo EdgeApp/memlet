@@ -9,6 +9,7 @@ import {
   MAX_BATCH_SIZE,
   notFoundErrorMessageRegex
 } from '../src/index'
+import { listCacheOnly } from './utils'
 
 describe('Memlet write-policy', () => {
   it('will write files to write-back after drain-delay', async () => {
@@ -17,14 +18,14 @@ describe('Memlet write-policy', () => {
     await memlet.setJson('a', 'xxx')
 
     // Immediate cache-store and backing-store state
-    expect(await memlet.list()).deep.equals({ a: 'file' })
     expect(await disklet.list()).deep.equals({})
+    expect(await memlet.list()).deep.equals({ a: 'file' })
 
     await delay(DRAIN_INTERVAL)
 
     // State after drain delay
-    expect(await memlet.list()).deep.equals({ a: 'file' })
     expect(await disklet.list()).deep.equals({ a: 'file' })
+    expect(await memlet.list()).deep.equals({ a: 'file' })
   })
 
   it('will write files to backing-store in batches after each drain-delay', async () => {
@@ -72,7 +73,7 @@ describe('Memlet write-policy', () => {
 
       // Expect that the cache has the correct state
       expect(
-        await memlet.list(),
+        listCacheOnly(memlet._instanceId),
         `memlet files ${testContextMessage}`
       ).deep.equals(allFileLists)
 
@@ -100,7 +101,10 @@ describe('Memlet write-policy', () => {
 
     await memlet.onFlush.next().value
 
-    expect(await memlet.list(), `memlet files before delete`).deep.equals({
+    expect(
+      listCacheOnly(memlet._instanceId),
+      `memlet files before delete`
+    ).deep.equals({
       aaa: 'file',
       bbb: 'file',
       ccc: 'file'
@@ -113,7 +117,10 @@ describe('Memlet write-policy', () => {
 
     await memlet.delete('aaa')
 
-    expect(await memlet.list(), `memlet files after delete`).deep.equals({
+    expect(
+      listCacheOnly(memlet._instanceId),
+      `memlet files after delete`
+    ).deep.equals({
       bbb: 'file',
       ccc: 'file'
     })

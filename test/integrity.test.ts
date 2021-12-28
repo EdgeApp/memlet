@@ -21,9 +21,10 @@ describe('Error optimizations', () => {
 
 describe('Memlet isolation', () => {
   it('wont list files from another memlet', async () => {
-    const disklet = makeMemoryDisklet()
-    const memlet1 = makeMemlet(disklet)
-    const memlet2 = makeMemlet(disklet)
+    const disklet1 = makeMemoryDisklet()
+    const disklet2 = makeMemoryDisklet()
+    const memlet1 = makeMemlet(disklet1)
+    const memlet2 = makeMemlet(disklet2)
 
     await memlet1.setJson('asldjf', 'file')
     await memlet2.setJson('bsldjf', 'file')

@@ -11,6 +11,8 @@ export interface Memlet {
   setJson: (path: string, obj: any) => Promise<void>
 
   onFlush: Generator<Promise<void> | undefined>
+
+  _instanceId: number
 }
 
 export interface MemletState {

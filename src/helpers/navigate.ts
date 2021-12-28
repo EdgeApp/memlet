@@ -24,6 +24,7 @@ export function navigateMemlet(memlet: Memlet, path: string): Memlet {
     setJson: function setJson(path, data) {
       return memlet.setJson(prefix + path, data)
     },
-    onFlush: memlet.onFlush
+    onFlush: memlet.onFlush,
+    _instanceId: memlet._instanceId
   }
 }
