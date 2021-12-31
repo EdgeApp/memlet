@@ -340,4 +340,24 @@ describe('Memlet', () => {
       folder: 'folder'
     })
   })
+
+  it('will normalize paths', async () => {
+    const disklet = makeMemoryDisklet()
+    const memlet = makeMemlet(disklet)
+
+    // Fixtures/Test setJson
+    await memlet.setJson('wacky//path', 'some data')
+    await memlet.setJson('normal/path', 'some data')
+
+    // Test delete
+    await memlet.delete('normal//path')
+
+    // Test getJson
+    expect(await memlet.getJson('wacky/path')).to.equal('some data')
+    expect(await memlet.getJson('wacky//path')).to.equal('some data')
+
+    // Test list
+    expect(await memlet.list()).to.deep.equal({ wacky: 'folder' })
+    expect(await memlet.list('wacky')).to.deep.equal({ 'wacky/path': 'file' })
+  })
 })

@@ -1,7 +1,7 @@
 import { Disklet } from 'disklet'
 
 import { delay } from './helpers/delay'
-import { fileKeyToPath } from './helpers/paths'
+import { fileKeyToPath, normalizePath } from './helpers/paths'
 import { makeQueue } from './queue'
 import { Action, File, Memlet, MemletConfig, MemletState } from './types'
 
@@ -64,30 +64,33 @@ export function makeMemlet(disklet: Disklet): Memlet {
        * (because disklet delete might succeed in delete, but fail on
        * something else).
        */
-      const file = await deleteStoreFile(filePathToKey(path))
+      const filepath = normalizePath(path)
+      const file = await deleteStoreFile(filePathToKey(filepath))
 
       if (file != null) {
         state.fileMemoryQueue.remove(file)
       }
 
-      queueDeleteAction(filePathToKey(path))
+      queueDeleteAction(filePathToKey(filepath))
       state.nextFlushEvent = startFlushing()
     },
 
     // Lists objects from a given path
     list: async (path: string = '') => {
+      const filepath = normalizePath(path)
       // Wait for cache to write-through to disk before reading from disk
       if (state.actionQueue.list().length > 0) {
         await state.nextFlushEvent
       }
 
       // Direct pass-through to disklet
-      return await disklet.list(path)
+      return await disklet.list(filepath)
     },
 
     // Get an object at given path
     getJson: async (path: string) => {
-      const key = filePathToKey(path)
+      const filepath = normalizePath(path)
+      const key = filePathToKey(filepath)
       const file = getStoreFile(key)
 
       if (file != null) {
@@ -106,10 +109,10 @@ export function makeMemlet(disklet: Disklet): Memlet {
         try {
           // Simulate not-found error if there exists an action in the queue to delete the file
           if (state.store.actions[key]?.type === 'delete')
-            throw new Error(`Cannot load "${path}""`)
+            throw new Error(`Cannot load "${filepath}""`)
 
           // Retrieve file from disklet, store it, then return
-          const dataString = await disklet.getText(path)
+          const dataString = await disklet.getText(filepath)
           const data = JSON.parse(dataString)
 
           const file = await addStoreFile(key, data, dataString.length)
@@ -141,7 +144,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
        * Write-through policy: write to memory cache first, then let the data be
        * drained to disklet later.
        */
-      const key = filePathToKey(path)
+      const filepath = normalizePath(path)
+      const key = filePathToKey(filepath)
       const file = getStoreFile(key)
       const dataString = JSON.stringify(data)
 
@@ -192,8 +196,8 @@ export function makeMemlet(disklet: Disklet): Memlet {
   // Memlet Private Functions
   // ---------------------------------------------------------------------
 
-  function filePathToKey(path: string): string {
-    return `${memletInstanceId}:${path}`
+  function filePathToKey(filepath: string): string {
+    return `${memletInstanceId}:${filepath}`
   }
 
   function queueWriteAction(file: File): void {
