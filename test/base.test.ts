@@ -359,5 +359,16 @@ describe('Memlet', () => {
     // Test list
     expect(await memlet.list()).to.deep.equal({ wacky: 'folder' })
     expect(await memlet.list('wacky')).to.deep.equal({ 'wacky/path': 'file' })
+
+    // Monkey patch disklet to no longer normalize the same
+    const oldList = disklet.list.bind(disklet)
+    disklet.list = async (path: string = '') => {
+      if (path === 'wacky//path') return {}
+      return await oldList(path)
+    }
+    // Test the monkey patch
+    expect(await memlet.list('wacky//path')).to.deep.equal({
+      'wacky/path': 'file'
+    })
   })
 })
