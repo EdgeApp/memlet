@@ -1,6 +1,6 @@
 # memlet
 
-## Unreleased
+## 0.1.6
 - Fix `memlet.list` to read directly from disklet after action queue is flushed.
 
 ## 0.1.5
