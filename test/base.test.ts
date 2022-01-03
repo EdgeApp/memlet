@@ -5,6 +5,7 @@ import { describe, it } from 'mocha'
 import { delay } from '../src/helpers/delay'
 import { _getMemletState, makeMemlet, Memlet } from '../src/index'
 import { QueueItem } from '../src/queue'
+import { listCacheOnly } from './utils'
 
 interface DataObjMap {
   [fileName: string]: DataObj
@@ -248,7 +249,10 @@ describe('Memlet', () => {
     await memlet.setJson(filename, 'some data')
 
     // Assertions after write
-    expect(await memlet.list(), 'memlet after write').to.deep.equal({
+    expect(
+      listCacheOnly(memlet._instanceId),
+      'memlet after write'
+    ).to.deep.equal({
       [filename]: 'file'
     })
     expect(await disklet.list(), 'disklet after write').to.deep.equal({})
@@ -258,7 +262,10 @@ describe('Memlet', () => {
     await memlet.onFlush.next().value
 
     // Assertions after write action flush
-    expect(await memlet.list(), 'memlet after write flush').to.deep.equal({
+    expect(
+      listCacheOnly(memlet._instanceId),
+      'memlet after write flush'
+    ).to.deep.equal({
       [filename]: 'file'
     })
     expect(await disklet.list(), 'disklet after write flush').to.deep.equal({
@@ -270,7 +277,10 @@ describe('Memlet', () => {
     await memlet.delete(filename)
 
     // Assertions after delete
-    expect(await memlet.list(), 'memlet after delete').to.deep.equal({})
+    expect(
+      listCacheOnly(memlet._instanceId),
+      'memlet after delete'
+    ).to.deep.equal({})
     expect(await disklet.list(), 'disklet after delete').to.deep.equal({
       [filename]: 'file'
     })
@@ -280,8 +290,74 @@ describe('Memlet', () => {
     await memlet.onFlush.next().value
 
     // Assertions after delete action flush
-    expect(await memlet.list(), 'memlet after delete flush').to.deep.equal({})
+    expect(
+      listCacheOnly(memlet._instanceId),
+      'memlet after delete flush'
+    ).to.deep.equal({})
     expect(await disklet.list(), 'disklet after delete flush').to.deep.equal({})
     expectActionStateToContainKey('after delete flush', false)
+  })
+
+  it('will list files from disk', async () => {
+    const disklet = makeMemoryDisklet()
+
+    // Setup
+    const memletA = makeMemlet(disklet)
+    await memletA.setJson('file-a', 'some data')
+    await memletA.setJson('file-b', 'some data')
+    await memletA.setJson('folder/file-c', 'some data')
+    await memletA.onFlush.next().value
+
+    // Test memlet
+    const memlet = makeMemlet(disklet)
+
+    expect(await memlet.list(), 'memlet list with empty cache').to.deep.equal({
+      'file-a': 'file',
+      'file-b': 'file',
+      folder: 'folder'
+    })
+
+    await memlet.delete('file-b')
+    await memlet.setJson('file-d', 'some data')
+
+    expect(
+      await memlet.list(),
+      'memlet list after writing/delete files'
+    ).to.deep.equal({
+      'file-a': 'file',
+      'file-d': 'file',
+      folder: 'folder'
+    })
+
+    await memlet.onFlush.next().value
+
+    expect(
+      await memlet.list(),
+      'memlet list after write-cache flush'
+    ).to.deep.equal({
+      'file-a': 'file',
+      'file-d': 'file',
+      folder: 'folder'
+    })
+  })
+
+  it('will normalize paths', async () => {
+    const disklet = makeMemoryDisklet()
+    const memlet = makeMemlet(disklet)
+
+    // Fixtures/Test setJson
+    await memlet.setJson('wacky//path', 'some data')
+    await memlet.setJson('normal/path', 'some data')
+
+    // Test delete
+    await memlet.delete('normal//path')
+
+    // Test getJson
+    expect(await memlet.getJson('wacky/path')).to.equal('some data')
+    expect(await memlet.getJson('wacky//path')).to.equal('some data')
+
+    // Test list
+    expect(await memlet.list()).to.deep.equal({ wacky: 'folder' })
+    expect(await memlet.list('wacky')).to.deep.equal({ 'wacky/path': 'file' })
   })
 })
