@@ -57,6 +57,6 @@ export interface File {
 
 export interface Action {
   key: string
-  type: 'write' | 'delete'
+  type: 'write' | 'delete' | 'read'
   routine: () => Promise<void>
 }
