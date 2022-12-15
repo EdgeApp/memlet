@@ -116,7 +116,7 @@ export function makeMemlet(disklet: Disklet): Memlet {
           const data = JSON.parse(dataString)
 
           const file = await addStoreFile(key, data, dataString.length)
-          queueWriteAction(file)
+          state.fileMemoryQueue.requeue(file)
 
           return data
         } catch (err) {
