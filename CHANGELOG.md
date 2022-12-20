@@ -1,5 +1,8 @@
 # memlet
 
+## 0.1.7
+- Fix: Do not re-write file on every read
+
 ## 0.1.6
 - Fix `memlet.list` to read directly from disklet after action queue is flushed.
 
